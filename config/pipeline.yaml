@@ -1,0 +1,137 @@
+proyecto:
+  nombre: chili-clustering-benchmark
+  version: 0.1.0
+  descripcion: >
+    Benchmark reproducible de clustering para construir una tipología
+    hidrológico-operativa anual del sistema Chili regulado.
+  semilla_aleatoria: 42
+
+rutas:
+  datos_crudos: data/raw/BDREPRESAS.xlsx
+  dataset_procesado: data/processed/dataset_diario.csv
+  features: data/processed/features.csv
+  log_limpieza: data/processed/log_limpieza.txt
+  carpeta_tablas: outputs/tables
+  carpeta_figuras: outputs/figures
+  carpeta_reportes: outputs/reports
+
+dataset:
+  periodo_inicio: "2011-12-01"
+  periodo_fin: "2025-11-30"
+
+  ano_hidrologico:
+    mes_inicio: 12
+    dia_inicio: 1
+    descripcion: >
+      Cada año hidrológico-operativo inicia el 1 de diciembre del año
+      anterior y finaliza el 30 de noviembre del año de etiqueta.
+
+  ventanas:
+    avenida:
+      meses: [12, 1, 2, 3, 4, 5]
+      etiqueta: "Avenida"
+      descripcion: "Período húmedo operativo: 1 diciembre a 31 mayo."
+    estiaje:
+      meses: [6, 7, 8, 9, 10, 11]
+      etiqueta: "Estiaje"
+      descripcion: "Período seco operativo: 1 junio a 30 noviembre."
+
+  completitud_minima: 0.90
+
+embalses:
+  sufijos:
+    AB: Aguada Blanca
+    FR: El Frayle
+    PÑ: El Pañe
+    DE: Dique los Españoles
+    PI: Pillones
+    CH: Chalhuanca
+    BA: Bamputañe
+
+  capacidad_util_operativa_hm3:
+    AB: 33.334042
+    FR: 148.716144
+    PÑ: 109.420601
+    DE: 10.829480
+    PI: 84.547431
+    CH: 28.750000
+    BA: 42.129269
+
+variables:
+  familias_por_embalse:
+    - prefijo: VOLUTIL
+      nombre: Volumen útil
+      unidad: m3
+      tipo: estado
+    - prefijo: DESCARGA
+      nombre: Descarga
+      unidad: m3/s
+      tipo: flujo
+    - prefijo: REBOSE
+      nombre: Rebose
+      unidad: m3/s
+      tipo: flujo
+    - prefijo: PRECIPITACION
+      nombre: Precipitación
+      unidad: mm
+      tipo: clima
+    - prefijo: EVAPORACION
+      nombre: Evaporación
+      unidad: mm
+      tipo: clima
+
+  excepciones:
+    EVAPORACIONDEI: EVAPORACIONDE
+
+  especiales:
+    - codigo: INGCHINEGASA
+      nombre: Ingreso medido al sistema
+      embalse: AB
+      unidad: m3/s
+      tipo: flujo
+      descripcion: >
+        Caudal de ingreso medido en Aguada Blanca. Se usa como señal
+        directa de ingreso agregado al sistema.
+
+archivo_fuente:
+  hoja_datos: BASE
+  fila_encabezados: 5
+  fila_inicio_datos: 6
+
+features:
+  base:
+    - codigo: vol_min
+      nombre: Volumen útil total mínimo anual
+      unidad: adimensional
+      ventana: ano_hidrologico
+      descripcion: >
+        Mínimo anual del volumen útil total del sistema, normalizado por
+        la capacidad útil operativa total.
+    - codigo: vol_amp
+      nombre: Amplitud anual de almacenamiento
+      unidad: adimensional
+      ventana: ano_hidrologico
+      descripcion: >
+        Diferencia entre el máximo y el mínimo anual del volumen útil
+        total, normalizada por la capacidad útil operativa total.
+    - codigo: inflow_avenida
+      nombre: Inflow medio en avenida
+      unidad: m3/s
+      ventana: avenida
+      descripcion: >
+        Promedio del ingreso medido durante la ventana de avenida.
+    - codigo: inflow_estiaje
+      nombre: Inflow medio en estiaje
+      unidad: m3/s
+      ventana: estiaje
+      descripcion: >
+        Promedio del ingreso medido durante la ventana de estiaje.
+    - codigo: dias_derrame
+      nombre: Días con derrame
+      unidad: dias/ano
+      ventana: ano_hidrologico
+      descripcion: >
+        Número de días del año hidrológico-operativo con rebose mayor
+        a cero en al menos un embalse.
+
+  correlacion_maxima_permitida: 0.85
