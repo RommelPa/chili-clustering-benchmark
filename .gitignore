@@ -28,3 +28,7 @@ mlartifacts/
 Thumbs.db
 .vscode/
 .idea/
+
+# Generated logs
+data/processed/*.txt
+data/processed/*.log
