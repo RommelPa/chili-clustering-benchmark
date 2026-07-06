@@ -119,6 +119,11 @@ metricas:
       - coasoc_inter_promedio
       - diferencia_intra_inter
 
+
+estabilidad:
+  metodo: subsampling_sin_reemplazo
+  n_iteraciones: 500
+  fraccion_muestra: 0.85
 restricciones_particion:
   min_clusters_validos: 2
   max_clusters_validos: 5
@@ -148,5 +153,6 @@ salidas:
     comparacion_metricas: outputs/figures/comparacion_metricas_algoritmos.png
     ranking_configuraciones: outputs/figures/ranking_configuraciones.png
     estabilidad_mejor_modelo: outputs/figures/estabilidad_mejor_modelo.png
+
 
 
