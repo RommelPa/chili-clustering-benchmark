@@ -10,7 +10,7 @@
     de un único algoritmo o una única métrica.
 
 mlflow:
-  tracking_uri: file:./mlruns
+  tracking_uri: sqlite:///outputs/mlflow/mlflow.db
   experiment_name: chili_clustering_benchmark
   log_artifacts: true
 
@@ -148,4 +148,5 @@ salidas:
     comparacion_metricas: outputs/figures/comparacion_metricas_algoritmos.png
     ranking_configuraciones: outputs/figures/ranking_configuraciones.png
     estabilidad_mejor_modelo: outputs/figures/estabilidad_mejor_modelo.png
+
 

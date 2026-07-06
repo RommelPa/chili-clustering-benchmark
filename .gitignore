@@ -32,3 +32,8 @@ Thumbs.db
 # Generated logs
 data/processed/*.txt
 data/processed/*.log
+
+# MLflow SQLite backend
+outputs/mlflow/
+*.db
+*.sqlite
