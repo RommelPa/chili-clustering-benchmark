@@ -1,125 +1,171 @@
-﻿experimento:
+experimento:
   nombre: benchmark_clustering_hidrologico_operativo
-  descripcion: >
-    Comparación reproducible de algoritmos de clustering para construir
+  descripcion: 'Comparación reproducible de algoritmos de clustering para construir
     una tipología anual hidrológico-operativa del sistema Chili regulado.
-  herramienta_tracking: mlflow
-  objetivo: >
-    Evaluar múltiples familias de clustering bajo un flujo común,
-    trazable y comparable, evitando seleccionar una partición a partir
-    de un único algoritmo o una única métrica.
 
+    '
+  herramienta_tracking: mlflow
+  objetivo: 'Evaluar múltiples familias de clustering bajo un flujo común, trazable
+    y comparable, evitando seleccionar una partición a partir de un único algoritmo
+    o una única métrica.
+
+    '
 mlflow:
   tracking_uri: sqlite:///outputs/mlflow/mlflow.db
   experiment_name: chili_clustering_benchmark
   log_artifacts: true
-
 preprocesamiento_experimental:
   scalers:
-    - zscore
-
+  - zscore
   feature_sets:
     base_operativa:
-      descripcion: >
-        Conjunto principal de variables hidrológico-operativas anuales.
-      variables:
-        - vol_min
-        - vol_amp
-        - inflow_avenida
-        - inflow_estiaje
-        - dias_derrame
+      descripcion: 'Conjunto principal de variables hidrológico-operativas anuales.
 
+        '
+      variables:
+      - vol_min
+      - vol_amp
+      - inflow_avenida
+      - inflow_estiaje
+      - dias_derrame
 algoritmos:
   kmeans:
     activo: true
     familia: particional_centroides
     rol: candidato_principal
-    justificacion: >
-      Línea base particional interpretable mediante centroides.
-    grid:
-      n_clusters: [2, 3, 4, 5]
-      n_init: [50, 100]
-      max_iter: [500]
-      random_state: [42]
+    justificacion: 'Línea base particional interpretable mediante centroides.
 
+      '
+    grid:
+      n_clusters:
+      - 2
+      - 3
+      - 4
+      - 5
+      n_init:
+      - 50
+      - 100
+      max_iter:
+      - 500
+      random_state:
+      - 42
   agglomerative:
     activo: true
     familia: jerarquico_aglomerativo
     rol: candidato_principal
-    justificacion: >
-      Permite evaluar si la estructura de grupos aparece bajo una lógica
+    justificacion: 'Permite evaluar si la estructura de grupos aparece bajo una lógica
       jerárquica de fusión progresiva de observaciones.
-    grid:
-      n_clusters: [2, 3, 4, 5]
-      linkage: [ward, complete, average]
-      metric: [euclidean]
 
+      '
+    grid:
+      n_clusters:
+      - 2
+      - 3
+      - 4
+      - 5
+      linkage:
+      - ward
+      - complete
+      - average
+      metric:
+      - euclidean
   gaussian_mixture:
     activo: true
     familia: probabilistico
     rol: candidato_principal
-    justificacion: >
-      Evalúa si los años pueden representarse como componentes
-      probabilísticos con diferentes estructuras de covarianza.
-    grid:
-      n_components: [2, 3, 4, 5]
-      covariance_type: [full, tied, diag]
-      reg_covar: [0.000001]
-      random_state: [42]
-      n_init: [20]
+    justificacion: 'Evalúa si los años pueden representarse como componentes probabilísticos
+      con diferentes estructuras de covarianza.
 
+      '
+    grid:
+      n_components:
+      - 2
+      - 3
+      - 4
+      - 5
+      covariance_type:
+      - full
+      - tied
+      - diag
+      reg_covar:
+      - 1.0e-06
+      random_state:
+      - 42
+      n_init:
+      - 20
   spectral:
     activo: true
     familia: afinidad_grafo
     rol: candidato_principal
-    justificacion: >
-      Evalúa agrupamientos basados en relaciones de afinidad entre años,
+    justificacion: 'Evalúa agrupamientos basados en relaciones de afinidad entre años,
       no solo en distancias directas del espacio original.
-    grid:
-      n_clusters: [2, 3, 4, 5]
-      affinity: [rbf, nearest_neighbors]
-      n_neighbors: [3, 5]
-      random_state: [42]
 
+      '
+    grid:
+      n_clusters:
+      - 2
+      - 3
+      - 4
+      - 5
+      affinity:
+      - rbf
+      - nearest_neighbors
+      n_neighbors:
+      - 3
+      - 5
+      random_state:
+      - 42
   birch:
     activo: true
     familia: subcluster_jerarquico
     rol: candidato_principal
-    justificacion: >
-      Contrasta una estructura basada en subclústeres compactos.
-    grid:
-      n_clusters: [2, 3, 4, 5]
-      threshold: [0.3, 0.5, 0.7]
-      branching_factor: [50]
+    justificacion: 'Contrasta una estructura basada en subclústeres compactos.
 
+      '
+    grid:
+      n_clusters:
+      - 2
+      - 3
+      - 4
+      - 5
+      threshold:
+      - 0.3
+      - 0.5
+      - 0.7
+      branching_factor:
+      - 50
   dbscan:
     activo: true
     familia: densidad
     rol: exploratorio
-    justificacion: >
-      Permite identificar agrupamientos sin fijar previamente K y puede
+    justificacion: 'Permite identificar agrupamientos sin fijar previamente K y puede
       detectar años atípicos como ruido.
-    grid:
-      eps: [0.5, 0.75, 1.0, 1.25, 1.5]
-      min_samples: [2, 3]
 
+      '
+    grid:
+      eps:
+      - 0.5
+      - 0.75
+      - 1.0
+      - 1.25
+      - 1.5
+      min_samples:
+      - 2
+      - 3
 metricas:
   internas:
-    - silhouette
-    - davies_bouldin
-    - calinski_harabasz
-
+  - silhouette
+  - davies_bouldin
+  - calinski_harabasz
   estabilidad:
     activo: true
     metodo: subsampling_sin_reemplazo
     n_iteraciones: 500
     fraccion_muestra: 0.85
     metricas:
-      - coasoc_intra_promedio
-      - coasoc_inter_promedio
-      - diferencia_intra_inter
-
-
+    - coasoc_intra_promedio
+    - coasoc_inter_promedio
+    - diferencia_intra_inter
 estabilidad:
   metodo: subsampling_sin_reemplazo
   n_iteraciones: 500
@@ -130,19 +176,19 @@ restricciones_particion:
   min_tamano_cluster: 2
   permitir_ruido_dbscan: true
   max_proporcion_ruido: 0.25
-
 ranking:
-  descripcion: >
-    Las configuraciones se ordenan mediante un criterio multicriterio
+  descripcion: 'Las configuraciones se ordenan mediante un criterio multicriterio
     que combina calidad interna, estabilidad y validez estructural.
+
+    '
   pesos:
     silhouette: 0.25
-    davies_bouldin: 0.20
-    calinski_harabasz: 0.20
+    davies_bouldin: 0.2
+    calinski_harabasz: 0.2
     estabilidad_intra_inter: 0.25
     penalizacion_ruido: 0.05
     penalizacion_cluster_pequeno: 0.05
-
+    estabilidad: 0.25
 salidas:
   tablas:
     benchmark_runs: outputs/tables/benchmark_runs.csv
@@ -153,6 +199,3 @@ salidas:
     comparacion_metricas: outputs/figures/comparacion_metricas_algoritmos.png
     ranking_configuraciones: outputs/figures/ranking_configuraciones.png
     estabilidad_mejor_modelo: outputs/figures/estabilidad_mejor_modelo.png
-
-
-
