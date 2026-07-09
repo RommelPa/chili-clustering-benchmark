@@ -37,8 +37,8 @@ def get_figure_output_dir(experiments_config: dict[str, Any]) -> Path:
 
 def load_required_outputs(
     experiments_config: dict[str, Any],
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Load final ranking and interpretation outputs."""
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Load final ranking, interpretation, and algorithm outputs."""
     table_dir = get_table_output_dir(experiments_config)
 
     final_partitions = pd.read_csv(table_dir / 'final_partition_ranking.csv')
@@ -46,8 +46,11 @@ def load_required_outputs(
         table_dir / 'selected_cluster_feature_differences.csv'
     )
     membership = pd.read_csv(table_dir / 'selected_partition_membership.csv')
+    algorithm_summary = pd.read_csv(
+        table_dir / 'algorithm_performance_summary.csv'
+    )
 
-    return final_partitions, differences, membership
+    return final_partitions, differences, membership, algorithm_summary
 
 
 def prepare_partition_score_data(
@@ -141,6 +144,63 @@ def prepare_year_typology_data(membership: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
+def prepare_algorithm_score_data(
+    algorithm_summary: pd.DataFrame,
+) -> pd.DataFrame:
+    """Prepare best algorithm scores for plotting."""
+    required_columns = [
+        'algorithm_name',
+        'best_final_score',
+        'best_stability_score',
+        'best_n_clusters',
+        'best_partition_id',
+    ]
+
+    missing = [
+        column for column in required_columns
+        if column not in algorithm_summary.columns
+    ]
+
+    if missing:
+        raise ValueError(f'Missing algorithm score columns: {missing}')
+
+    return (
+        algorithm_summary[required_columns]
+        .dropna(subset=['best_final_score'])
+        .sort_values('best_final_score', ascending=False)
+        .reset_index(drop=True)
+    )
+
+
+def prepare_valid_partition_data(
+    algorithm_summary: pd.DataFrame,
+) -> pd.DataFrame:
+    """Prepare valid partition counts by algorithm."""
+    required_columns = [
+        'algorithm_name',
+        'n_configurations',
+        'n_valid_partitions',
+        'valid_partition_rate',
+    ]
+
+    missing = [
+        column for column in required_columns
+        if column not in algorithm_summary.columns
+    ]
+
+    if missing:
+        raise ValueError(f'Missing valid partition columns: {missing}')
+
+    return (
+        algorithm_summary[required_columns]
+        .sort_values(
+            by=['n_valid_partitions', 'n_configurations'],
+            ascending=[False, False],
+        )
+        .reset_index(drop=True)
+    )
+
+
 def plot_final_partition_scores(
     final_partitions: pd.DataFrame,
     output_path: Path,
@@ -230,6 +290,82 @@ def plot_year_typology(
     return output_path
 
 
+def plot_best_score_by_algorithm(
+    algorithm_summary: pd.DataFrame,
+    output_path: Path,
+) -> Path:
+    """Plot best final score reached by each algorithm."""
+    data = prepare_algorithm_score_data(algorithm_summary)
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    bars = ax.barh(data['algorithm_name'], data['best_final_score'])
+    ax.set_xlim(0, 1.05)
+    ax.set_xlabel('Score final integrado')
+    ax.set_ylabel('Algoritmo')
+    ax.set_title('Mejor score final por algoritmo')
+    ax.invert_yaxis()
+
+    for bar, (_, row) in zip(bars, data.iterrows()):
+        label = (
+            f"{row['best_final_score']:.3f} | "
+            f"K={int(row['best_n_clusters'])}"
+        )
+        ax.text(
+            bar.get_width() + 0.01,
+            bar.get_y() + bar.get_height() / 2,
+            label,
+            va='center',
+            fontsize=8,
+        )
+
+    fig.tight_layout()
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=300)
+    plt.close(fig)
+
+    return output_path
+
+
+def plot_valid_partitions_by_algorithm(
+    algorithm_summary: pd.DataFrame,
+    output_path: Path,
+) -> Path:
+    """Plot valid partition counts by algorithm."""
+    data = prepare_valid_partition_data(algorithm_summary)
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    bars = ax.barh(data['algorithm_name'], data['n_valid_partitions'])
+    max_configurations = int(data['n_configurations'].max())
+    ax.set_xlim(0, max_configurations + 2)
+    ax.set_xlabel('Particiones válidas')
+    ax.set_ylabel('Algoritmo')
+    ax.set_title('Particiones válidas por algoritmo')
+    ax.invert_yaxis()
+
+    for bar, (_, row) in zip(bars, data.iterrows()):
+        rate = row['valid_partition_rate'] * 100
+        label = (
+            f"{int(row['n_valid_partitions'])}/"
+            f"{int(row['n_configurations'])} ({rate:.0f}%)"
+        )
+        ax.text(
+            bar.get_width() + 0.1,
+            bar.get_y() + bar.get_height() / 2,
+            label,
+            va='center',
+            fontsize=8,
+        )
+
+    fig.tight_layout()
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=300)
+    plt.close(fig)
+
+    return output_path
+
+
 def get_figure_paths(
     experiments_config: dict[str, Any],
 ) -> dict[str, Path]:
@@ -242,6 +378,12 @@ def get_figure_paths(
             figure_dir / 'cluster_difference_profile.png'
         ),
         'year_typology': figure_dir / 'year_typology.png',
+        'best_score_by_algorithm': (
+            figure_dir / 'best_score_by_algorithm.png'
+        ),
+        'valid_partitions_by_algorithm': (
+            figure_dir / 'valid_partitions_by_algorithm.png'
+        ),
     }
 
 
@@ -249,9 +391,12 @@ def generate_figures(
     experiments_config: dict[str, Any],
 ) -> dict[str, Path]:
     """Generate all result figures."""
-    final_partitions, differences, membership = load_required_outputs(
-        experiments_config
-    )
+    (
+        final_partitions,
+        differences,
+        membership,
+        algorithm_summary,
+    ) = load_required_outputs(experiments_config)
     figure_paths = get_figure_paths(experiments_config)
 
     plot_final_partition_scores(
@@ -266,6 +411,14 @@ def generate_figures(
         membership=membership,
         output_path=figure_paths['year_typology'],
     )
+    plot_best_score_by_algorithm(
+        algorithm_summary=algorithm_summary,
+        output_path=figure_paths['best_score_by_algorithm'],
+    )
+    plot_valid_partitions_by_algorithm(
+        algorithm_summary=algorithm_summary,
+        output_path=figure_paths['valid_partitions_by_algorithm'],
+    )
 
     print('[figures] Figuras generadas correctamente')
     for name, path in figure_paths.items():
@@ -279,3 +432,4 @@ if __name__ == '__main__':
 
     experiments_config = load_experiments_config()
     generate_figures(experiments_config)
+
