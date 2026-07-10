@@ -1,21 +1,7 @@
 ﻿from src import pipeline
 
 
-def test_parse_args_supports_no_mlflow_and_stability_limit():
-    args = pipeline.parse_args(
-        [
-            '--no-mlflow',
-            '--max-stability-runs',
-            '5',
-        ]
-    )
-
-    assert args.no_mlflow is True
-    assert args.max_stability_runs == 5
-
-
-def test_run_pipeline_calls_steps_in_expected_order(monkeypatch):
-    calls: list[str] = []
+def patch_pipeline_dependencies(monkeypatch, calls: list[str]) -> None:
     pipeline_config = {'config': 'pipeline'}
     experiments_config = {'config': 'experiments'}
 
@@ -59,8 +45,8 @@ def test_run_pipeline_calls_steps_in_expected_order(monkeypatch):
     ):
         assert pipeline_config == {'config': 'pipeline'}
         assert experiments_config == {'config': 'experiments'}
-        assert max_runs == 3
         calls.append('stability')
+        calls.append(f'max_runs={max_runs}')
 
     def fake_run_final_ranking(config):
         assert config == {'config': 'experiments'}
@@ -101,10 +87,71 @@ def test_run_pipeline_calls_steps_in_expected_order(monkeypatch):
     monkeypatch.setattr(pipeline, 'run_interpretation', fake_run_interpretation)
     monkeypatch.setattr(pipeline, 'generate_figures', fake_generate_figures)
 
+
+def test_parse_args_supports_no_mlflow_and_stability_limit():
+    args = pipeline.parse_args(
+        [
+            '--no-mlflow',
+            '--max-stability-runs',
+            '5',
+        ]
+    )
+
+    assert args.no_mlflow is True
+    assert args.max_stability_runs == 5
+
+
+def test_run_pipeline_calls_all_steps_when_stability_is_complete(monkeypatch):
+    calls: list[str] = []
+    patch_pipeline_dependencies(monkeypatch, calls)
+
+    completed_steps = pipeline.run_pipeline(
+        log_to_mlflow=False,
+        max_stability_runs=None,
+    )
+
+    expected_calls = [
+        'benchmark',
+        'data_summary',
+        'ranking',
+        'partition_equivalence',
+        'stability',
+        'max_runs=None',
+        'final_ranking',
+        'algorithm_analysis',
+        'interpretation',
+        'figures',
+    ]
+
+    assert calls == expected_calls
+    assert completed_steps == pipeline.PIPELINE_STEPS
+
+
+def test_run_pipeline_stops_after_stability_when_using_smoke_limit(monkeypatch):
+    calls: list[str] = []
+    patch_pipeline_dependencies(monkeypatch, calls)
+
     completed_steps = pipeline.run_pipeline(
         log_to_mlflow=False,
         max_stability_runs=3,
     )
 
-    assert calls == pipeline.PIPELINE_STEPS
-    assert completed_steps == pipeline.PIPELINE_STEPS
+    expected_steps = [
+        'benchmark',
+        'data_summary',
+        'ranking',
+        'partition_equivalence',
+        'stability',
+    ]
+
+    expected_calls = [
+        'benchmark',
+        'data_summary',
+        'ranking',
+        'partition_equivalence',
+        'stability',
+        'max_runs=3',
+    ]
+
+    assert calls == expected_calls
+    assert completed_steps == expected_steps

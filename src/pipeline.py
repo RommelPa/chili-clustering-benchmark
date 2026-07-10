@@ -84,6 +84,15 @@ def run_pipeline(
     completed_steps.append('stability')
     print_step_done('stability')
 
+    if max_stability_runs is not None:
+        print('')
+        print('[pipeline] Ejecuci?n de prueba completada hasta stability')
+        print(
+            '[pipeline] max_stability_runs est? activo; '
+            'se omiten pasos que requieren estabilidad completa.'
+        )
+        return completed_steps
+
     print_step_start('final_ranking')
     run_final_ranking(experiments_config)
     completed_steps.append('final_ranking')
