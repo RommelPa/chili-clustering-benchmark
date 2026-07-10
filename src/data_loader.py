@@ -125,7 +125,7 @@ def _write_cleaning_log(log: dict[str, Any], config: dict[str, Any]) -> None:
         '',
     ]
 
-    path.write_text('\\n'.join(lines), encoding='utf-8')
+    path.write_text('\n'.join(lines), encoding='utf-8')
 
 
 def load_raw_data(config: dict[str, Any] | str | Path) -> pd.DataFrame:
