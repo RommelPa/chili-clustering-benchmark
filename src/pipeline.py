@@ -1,4 +1,5 @@
 ﻿from __future__ import annotations
+from src.dataset_figures import generate_dataset_figures
 
 import argparse
 
@@ -17,6 +18,7 @@ from src.stability import run_stability_analysis
 PIPELINE_STEPS = [
     'benchmark',
     'data_summary',
+    'dataset_figures',
     'ranking',
     'partition_equivalence',
     'stability',
@@ -64,6 +66,11 @@ def run_pipeline(
     run_data_summary(pipeline_config)
     completed_steps.append('data_summary')
     print_step_done('data_summary')
+
+    print_step_start('dataset_figures')
+    generate_dataset_figures(pipeline_config)
+    completed_steps.append('dataset_figures')
+    print_step_done('dataset_figures')
 
     print_step_start('ranking')
     run_ranking(experiments_config)

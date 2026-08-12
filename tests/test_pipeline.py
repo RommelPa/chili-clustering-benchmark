@@ -30,6 +30,16 @@ def patch_pipeline_dependencies(monkeypatch, calls: list[str]) -> None:
         assert config == {'config': 'pipeline'}
         calls.append('data_summary')
 
+    def fake_generate_dataset_figures(config):
+        assert config == {'config': 'pipeline'}
+        calls.append('dataset_figures')
+
+    monkeypatch.setattr(
+        pipeline,
+        'generate_dataset_figures',
+        fake_generate_dataset_figures,
+    )
+
     def fake_run_ranking(config):
         assert config == {'config': 'experiments'}
         calls.append('ranking')
@@ -113,6 +123,7 @@ def test_run_pipeline_calls_all_steps_when_stability_is_complete(monkeypatch):
     expected_calls = [
         'benchmark',
         'data_summary',
+        'dataset_figures',
         'ranking',
         'partition_equivalence',
         'stability',
@@ -139,6 +150,7 @@ def test_run_pipeline_stops_after_stability_when_using_smoke_limit(monkeypatch):
     expected_steps = [
         'benchmark',
         'data_summary',
+        'dataset_figures',
         'ranking',
         'partition_equivalence',
         'stability',
@@ -147,6 +159,7 @@ def test_run_pipeline_stops_after_stability_when_using_smoke_limit(monkeypatch):
     expected_calls = [
         'benchmark',
         'data_summary',
+        'dataset_figures',
         'ranking',
         'partition_equivalence',
         'stability',
