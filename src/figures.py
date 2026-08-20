@@ -200,6 +200,105 @@ def prepare_valid_partition_data(
         .reset_index(drop=True)
     )
 
+def load_feature_correlation_data(
+    experiments_config: dict[str, Any],
+) -> pd.DataFrame:
+    """Load feature correlation matrix."""
+    table_dir = get_table_output_dir(experiments_config)
+    correlation_path = table_dir / 'feature_correlations.csv'
+
+    return pd.read_csv(correlation_path, index_col=0)
+
+
+def prepare_feature_correlation_matrix(
+    correlation_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """Prepare feature correlation matrix for plotting."""
+    if correlation_df.empty:
+        raise ValueError('Feature correlation matrix is empty.')
+
+    if correlation_df.shape[0] != correlation_df.shape[1]:
+        raise ValueError('Feature correlation matrix must be square.')
+
+    feature_labels = {
+        'vol_min': 'Min. storage',
+        'vol_amp': 'Storage amplitude',
+        'inflow_avenida': 'Wet-season inflow',
+        'inflow_estiaje': 'Dry-season inflow',
+        'dias_derrame': 'Spill days',
+    }
+
+    matrix = correlation_df.apply(pd.to_numeric, errors='coerce')
+
+    if matrix.isna().any().any():
+        raise ValueError('Feature correlation matrix must be numeric.')
+
+    matrix.index = [
+        feature_labels.get(feature, feature)
+        for feature in matrix.index
+    ]
+    matrix.columns = [
+        feature_labels.get(feature, feature)
+        for feature in matrix.columns
+    ]
+
+    return matrix
+
+
+def plot_feature_correlation_heatmap(
+    correlation_df: pd.DataFrame,
+    output_path: Path,
+) -> Path:
+    """Plot feature correlation heatmap."""
+    matrix = prepare_feature_correlation_matrix(correlation_df)
+
+    fig, ax = plt.subplots(figsize=(6.8, 5.4))
+
+    image = ax.imshow(
+        matrix.values,
+        cmap='coolwarm',
+        vmin=-1.0,
+        vmax=1.0,
+        aspect='auto',
+    )
+
+    ax.set_xticks(range(len(matrix.columns)))
+    ax.set_yticks(range(len(matrix.index)))
+    ax.set_xticklabels(
+        matrix.columns,
+        rotation=45,
+        ha='right',
+        fontsize=7,
+    )
+    ax.set_yticklabels(matrix.index, fontsize=7)
+
+    for row_index in range(matrix.shape[0]):
+        for col_index in range(matrix.shape[1]):
+            value = matrix.iloc[row_index, col_index]
+            text_color = 'white' if abs(value) >= 0.50 else 'black'
+            ax.text(
+                col_index,
+                row_index,
+                f'{value:.2f}',
+                ha='center',
+                va='center',
+                color=text_color,
+                fontsize=8,
+            )
+
+    colorbar = fig.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
+    colorbar.set_label('Pearson correlation', fontsize=8)
+    colorbar.ax.tick_params(labelsize=7)
+
+    ax.tick_params(axis='both', length=0)
+
+    fig.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close(fig)
+
+    return output_path
+
 def plot_final_partition_scores(
     final_partitions: pd.DataFrame,
     output_path: Path,
@@ -408,6 +507,9 @@ def get_figure_paths(
         'valid_partitions_by_algorithm': (
             figure_dir / 'valid_partitions_by_algorithm.png'
         ),
+        'feature_correlation_heatmap': (
+            figure_dir / 'feature_correlation_heatmap.png'
+        ),
     }
 
 
@@ -421,6 +523,7 @@ def generate_figures(
         membership,
         algorithm_summary,
     ) = load_required_outputs(experiments_config)
+    correlation_df = load_feature_correlation_data(experiments_config)
     figure_paths = get_figure_paths(experiments_config)
 
     plot_final_partition_scores(
@@ -442,6 +545,10 @@ def generate_figures(
     plot_valid_partitions_by_algorithm(
         algorithm_summary=algorithm_summary,
         output_path=figure_paths['valid_partitions_by_algorithm'],
+    )
+    plot_feature_correlation_heatmap(
+        correlation_df=correlation_df,
+        output_path=figure_paths['feature_correlation_heatmap'],
     )
 
     print('[figures] Figuras generadas correctamente')

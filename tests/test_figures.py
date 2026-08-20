@@ -14,6 +14,8 @@ from src.figures import (
     prepare_partition_score_data,
     prepare_valid_partition_data,
     prepare_year_typology_data,
+    plot_feature_correlation_heatmap,
+    prepare_feature_correlation_matrix,
 )
 
 
@@ -89,6 +91,25 @@ def build_algorithm_summary() -> pd.DataFrame:
         }
     )
 
+def build_feature_correlations() -> pd.DataFrame:
+    features = [
+        'vol_min',
+        'vol_amp',
+        'inflow_avenida',
+        'inflow_estiaje',
+        'dias_derrame',
+    ]
+
+    return pd.DataFrame(
+        {
+            'vol_min': [1.00, 0.40, 0.35, 0.20, -0.10],
+            'vol_amp': [0.40, 1.00, 0.30, 0.15, 0.25],
+            'inflow_avenida': [0.35, 0.30, 1.00, 0.60, 0.45],
+            'inflow_estiaje': [0.20, 0.15, 0.60, 1.00, 0.30],
+            'dias_derrame': [-0.10, 0.25, 0.45, 0.30, 1.00],
+        },
+        index=features,
+    )
 
 def test_get_figure_output_dir_uses_fallback():
     config = {
@@ -192,6 +213,24 @@ def test_plot_valid_partitions_by_algorithm_writes_png(tmp_path):
 
     plot_valid_partitions_by_algorithm(
         algorithm_summary=build_algorithm_summary(),
+        output_path=output_path,
+    )
+
+    assert output_path.exists()
+
+def test_prepare_feature_correlation_matrix_renames_features():
+    matrix = prepare_feature_correlation_matrix(build_feature_correlations())
+
+    assert 'Min. storage' in matrix.index
+    assert 'Storage amplitude' in matrix.columns
+    assert matrix.loc['Min. storage', 'Storage amplitude'] == 0.40
+
+
+def test_plot_feature_correlation_heatmap_writes_png(tmp_path):
+    output_path = tmp_path / 'feature_correlation_heatmap.png'
+
+    plot_feature_correlation_heatmap(
+        correlation_df=build_feature_correlations(),
         output_path=output_path,
     )
 
