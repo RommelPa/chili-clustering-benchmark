@@ -200,7 +200,6 @@ def prepare_valid_partition_data(
         .reset_index(drop=True)
     )
 
-
 def plot_final_partition_scores(
     final_partitions: pd.DataFrame,
     output_path: Path,
@@ -209,26 +208,37 @@ def plot_final_partition_scores(
     """Plot final scores for top-ranked partitions."""
     data = prepare_partition_score_data(final_partitions, top_n=top_n)
     labels = (
-        data['partition_id'].astype(str)
-        + '\nK='
-        + data['n_clusters'].astype(str)
+        data["partition_id"].astype(str)
+        + "\nK="
+        + data["n_clusters"].astype(str)
     )
 
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.bar(labels, data['final_score'])
-    ax.set_ylim(0, 1)
-    ax.set_xlabel('Partición')
-    ax.set_ylabel('Score final integrado')
-    ax.set_title('Ranking final de particiones')
-    ax.tick_params(axis='x', rotation=45)
-    fig.tight_layout()
+    fig, ax = plt.subplots(figsize=(8, 4))
+    bars = ax.bar(labels, data["final_score"])
 
+    ax.set_ylim(0, 1.05)
+    ax.set_xlabel("Candidate partition", fontsize=8)
+    ax.set_ylabel("Final integrated score", fontsize=8)
+    ax.tick_params(axis="both", labelsize=7)
+    ax.tick_params(axis="x", rotation=45)
+    ax.grid(axis="y", linewidth=0.4, alpha=0.35)
+
+    for bar, score in zip(bars, data["final_score"]):
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + 0.015,
+            f"{score:.3f}",
+            ha="center",
+            va="bottom",
+            fontsize=7,
+        )
+
+    fig.tight_layout()
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=300)
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
 
     return output_path
-
 
 def plot_cluster_difference_profile(
     differences: pd.DataFrame,
@@ -237,22 +247,31 @@ def plot_cluster_difference_profile(
     """Plot standardized cluster differences against the global mean."""
     matrix = prepare_cluster_difference_matrix(differences)
 
-    fig, ax = plt.subplots(figsize=(10, 5))
-    matrix.plot(kind='bar', ax=ax)
-    ax.axhline(0, linewidth=1)
-    ax.set_xlabel('Variable')
-    ax.set_ylabel('Diferencia estandarizada frente a la media global')
-    ax.set_title('Perfil diferencial de los clústeres seleccionados')
-    ax.tick_params(axis='x', rotation=45)
-    ax.legend(title='Clúster')
-    fig.tight_layout()
+    fig, ax = plt.subplots(figsize=(8, 4))
+    matrix.plot(kind="bar", ax=ax)
 
+    ax.axhline(0, linewidth=1, color="#6c757d")
+    ax.set_xlabel("Feature", fontsize=8)
+    ax.set_ylabel("Standardized deviation from global mean", fontsize=8)
+    ax.tick_params(axis="both", labelsize=7)
+    ax.tick_params(axis="x", rotation=45)
+    ax.grid(axis="y", linewidth=0.4, alpha=0.35)
+    ax.legend(
+        title="Cluster",
+        fontsize=7,
+        title_fontsize=7,
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.32),
+        ncol=max(1, len(matrix.columns)),
+        frameon=True,
+    )
+
+    fig.tight_layout()
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=300)
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
 
     return output_path
-
 
 def plot_year_typology(
     membership: pd.DataFrame,
@@ -260,35 +279,40 @@ def plot_year_typology(
 ) -> Path:
     """Plot annual hydrological-operational typology."""
     data = prepare_year_typology_data(membership)
-    cluster_order = sorted(data['cluster_id'].astype(str).unique())
+    cluster_order = sorted(data["cluster_id"].astype(str).unique())
 
-    fig, ax = plt.subplots(figsize=(10, 4))
-    ax.scatter(data['AH_YEAR'], data['cluster_position'])
+    fig, ax = plt.subplots(figsize=(8, 3.6))
+    ax.scatter(
+        data["AH_YEAR"],
+        data["cluster_position"],
+        s=42,
+        zorder=3,
+    )
 
     for _, row in data.iterrows():
-        label = str(row['AH']).replace('AH-', '')
+        label = str(row["AH"]).replace("AH-", "")
         ax.annotate(
             label,
-            (row['AH_YEAR'], row['cluster_position']),
-            textcoords='offset points',
+            (row["AH_YEAR"], row["cluster_position"]),
+            textcoords="offset points",
             xytext=(0, 6),
-            ha='center',
-            fontsize=8,
+            ha="center",
+            fontsize=7,
         )
 
     ax.set_yticks(range(len(cluster_order)))
     ax.set_yticklabels(cluster_order)
-    ax.set_xlabel('Año hidrológico-operativo')
-    ax.set_ylabel('Tipología')
-    ax.set_title('Asignación anual a la partición seleccionada')
-    fig.tight_layout()
+    ax.set_xlabel("Hydrological-operational year", fontsize=8)
+    ax.set_ylabel("Selected cluster", fontsize=8)
+    ax.tick_params(axis="both", labelsize=7)
+    ax.grid(True, linewidth=0.4, alpha=0.35)
 
+    fig.tight_layout()
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=300)
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
 
     return output_path
-
 
 def plot_best_score_by_algorithm(
     algorithm_summary: pd.DataFrame,
@@ -297,13 +321,15 @@ def plot_best_score_by_algorithm(
     """Plot best final score reached by each algorithm."""
     data = prepare_algorithm_score_data(algorithm_summary)
 
-    fig, ax = plt.subplots(figsize=(9, 5))
-    bars = ax.barh(data['algorithm_name'], data['best_final_score'])
-    ax.set_xlim(0, 1.05)
-    ax.set_xlabel('Score final integrado')
-    ax.set_ylabel('Algoritmo')
-    ax.set_title('Mejor score final por algoritmo')
+    fig, ax = plt.subplots(figsize=(8, 4))
+    bars = ax.barh(data["algorithm_name"], data["best_final_score"])
+
+    ax.set_xlim(0, 1.08)
+    ax.set_xlabel("Best final integrated score", fontsize=8)
+    ax.set_ylabel("Algorithm", fontsize=8)
+    ax.tick_params(axis="both", labelsize=7)
     ax.invert_yaxis()
+    ax.grid(axis="x", linewidth=0.4, alpha=0.35)
 
     for bar, (_, row) in zip(bars, data.iterrows()):
         label = (
@@ -314,18 +340,16 @@ def plot_best_score_by_algorithm(
             bar.get_width() + 0.01,
             bar.get_y() + bar.get_height() / 2,
             label,
-            va='center',
-            fontsize=8,
+            va="center",
+            fontsize=7,
         )
 
     fig.tight_layout()
-
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=300)
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
 
     return output_path
-
 
 def plot_valid_partitions_by_algorithm(
     algorithm_summary: pd.DataFrame,
@@ -334,17 +358,19 @@ def plot_valid_partitions_by_algorithm(
     """Plot valid partition counts by algorithm."""
     data = prepare_valid_partition_data(algorithm_summary)
 
-    fig, ax = plt.subplots(figsize=(9, 5))
-    bars = ax.barh(data['algorithm_name'], data['n_valid_partitions'])
-    max_configurations = int(data['n_configurations'].max())
+    fig, ax = plt.subplots(figsize=(8, 4))
+    bars = ax.barh(data["algorithm_name"], data["n_valid_partitions"])
+
+    max_configurations = int(data["n_configurations"].max())
     ax.set_xlim(0, max_configurations + 2)
-    ax.set_xlabel('Particiones válidas')
-    ax.set_ylabel('Algoritmo')
-    ax.set_title('Particiones válidas por algoritmo')
+    ax.set_xlabel("Valid partitions", fontsize=8)
+    ax.set_ylabel("Algorithm", fontsize=8)
+    ax.tick_params(axis="both", labelsize=7)
     ax.invert_yaxis()
+    ax.grid(axis="x", linewidth=0.4, alpha=0.35)
 
     for bar, (_, row) in zip(bars, data.iterrows()):
-        rate = row['valid_partition_rate'] * 100
+        rate = row["valid_partition_rate"] * 100
         label = (
             f"{int(row['n_valid_partitions'])}/"
             f"{int(row['n_configurations'])} ({rate:.0f}%)"
@@ -353,18 +379,16 @@ def plot_valid_partitions_by_algorithm(
             bar.get_width() + 0.1,
             bar.get_y() + bar.get_height() / 2,
             label,
-            va='center',
-            fontsize=8,
+            va="center",
+            fontsize=7,
         )
 
     fig.tight_layout()
-
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=300)
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
 
     return output_path
-
 
 def get_figure_paths(
     experiments_config: dict[str, Any],
