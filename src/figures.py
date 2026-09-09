@@ -678,18 +678,10 @@ def plot_valid_partitions_by_algorithm(
 def get_figure_paths(
     experiments_config: dict[str, Any],
 ) -> dict[str, Path]:
-    """Return output paths for result figures."""
+    """Return output paths for publication result figures."""
     figure_dir = get_figure_output_dir(experiments_config)
 
     return {
-        'final_partition_scores': figure_dir / 'final_partition_scores.png',
-        'cluster_difference_profile': (
-            figure_dir / 'cluster_difference_profile.png'
-        ),
-        'year_typology': figure_dir / 'year_typology.png',
-        'best_score_by_algorithm': (
-            figure_dir / 'best_score_by_algorithm.png'
-        ),
         'valid_partitions_by_algorithm': (
             figure_dir / 'valid_partitions_by_algorithm.png'
         ),
@@ -705,33 +697,18 @@ def get_figure_paths(
 def generate_figures(
     experiments_config: dict[str, Any],
 ) -> dict[str, Path]:
-    """Generate all result figures."""
+    """Generate publication result figures."""
     (
-        final_partitions,
-        differences,
+        _final_partitions,
+        _differences,
         membership,
         algorithm_summary,
     ) = load_required_outputs(experiments_config)
+
     correlation_df = load_feature_correlation_data(experiments_config)
     feature_matrix = load_standardized_feature_matrix(experiments_config)
     figure_paths = get_figure_paths(experiments_config)
 
-    plot_final_partition_scores(
-        final_partitions=final_partitions,
-        output_path=figure_paths['final_partition_scores'],
-    )
-    plot_cluster_difference_profile(
-        differences=differences,
-        output_path=figure_paths['cluster_difference_profile'],
-    )
-    plot_year_typology(
-        membership=membership,
-        output_path=figure_paths['year_typology'],
-    )
-    plot_best_score_by_algorithm(
-        algorithm_summary=algorithm_summary,
-        output_path=figure_paths['best_score_by_algorithm'],
-    )
     plot_valid_partitions_by_algorithm(
         algorithm_summary=algorithm_summary,
         output_path=figure_paths['valid_partitions_by_algorithm'],
@@ -746,7 +723,7 @@ def generate_figures(
         output_path=figure_paths['selected_grouping_pca_projection'],
     )
 
-    print('[figures] Figuras generadas correctamente')
+    print('[figures] Figuras de resultados generadas correctamente')
     for name, path in figure_paths.items():
         print(f'[figures] {name}: {path}')
 

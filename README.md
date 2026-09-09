@@ -4,7 +4,7 @@ Benchmark reproducible para evaluar algoritmos de clustering aplicados a la tipo
 
 ## Objetivo
 
-Construir una partición anual reproducible a partir de variables hidrológico-operativas, comparar algoritmos de clustering y seleccionar una tipología final con criterios de desempeño, equivalencia y estabilidad.
+Construir un agrupamiento anual reproducible a partir de variables hidrológico-operativas, comparar algoritmos de clustering y seleccionar una tipología final con criterios de desempeño, estabilidad y soporte entre configuraciones.
 
 ## Datos
 
@@ -61,6 +61,7 @@ Este comando ejecuta todo el flujo:
 ```text
 benchmark
 data_summary
+dataset_figures
 ranking
 partition_equivalence
 stability
@@ -86,21 +87,26 @@ outputs/tables/algorithm_performance_summary.csv
 outputs/tables/selected_partition_membership.csv
 outputs/tables/selected_cluster_profiles.csv
 outputs/tables/data_processing_summary.csv
-outputs/figures/
+outputs/tables/final_grouping_ranking_ieee.csv
+outputs/figures/figure_1_monthly_total_storage.png
+outputs/figures/figure_2_seasonal_storage_pattern.png
+outputs/figures/feature_correlation_heatmap.png
+outputs/figures/valid_partitions_by_algorithm.png
+outputs/figures/selected_grouping_pca_projection.png
 ```
 
 ## Resultado actual
 
-La partición seleccionada es `partition_001`.
+El agrupamiento seleccionado está representado por `spectral_002`.
 
 ```text
-Representante: spectral_002
+Configuración representante: spectral_002
 Algoritmo representante: spectral
 Clústeres: 2
-Corridas equivalentes: 13
+Configuraciones con el mismo agrupamiento: 13
 Algoritmos de soporte: agglomerative, birch, gaussian_mixture, kmeans, spectral
 Score final: 0.969816
 Estabilidad: 0.999338
 ```
 
-Este resultado no significa que Spectral Clustering sea universalmente el mejor algoritmo. Significa que `spectral_002` representa la partición final seleccionada por el ranking integrado.
+Este resultado no significa que Spectral Clustering sea universalmente el mejor algoritmo. Significa que `spectral_002` representa el agrupamiento final seleccionado por el ranking integrado.
