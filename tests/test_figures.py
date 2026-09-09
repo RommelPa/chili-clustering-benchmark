@@ -16,6 +16,8 @@ from src.figures import (
     prepare_year_typology_data,
     plot_feature_correlation_heatmap,
     prepare_feature_correlation_matrix,
+    plot_selected_grouping_pca_projection,
+    prepare_selected_grouping_pca_data,
 )
 
 
@@ -66,6 +68,18 @@ def build_membership() -> pd.DataFrame:
         }
     )
 
+def build_feature_matrix() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            'AH': ['AH-2012', 'AH-2013', 'AH-2014', 'AH-2015'],
+            'AH_YEAR': [2012, 2013, 2014, 2015],
+            'vol_min': [0.8, 0.7, -1.0, -0.9],
+            'vol_amp': [0.6, 0.5, -0.7, -0.6],
+            'inflow_avenida': [0.9, 0.8, -1.1, -1.0],
+            'inflow_estiaje': [0.4, 0.5, -0.5, -0.4],
+            'dias_derrame': [1.0, 0.9, -1.2, -1.1],
+        }
+    )
 
 def build_algorithm_summary() -> pd.DataFrame:
     return pd.DataFrame(
@@ -231,6 +245,30 @@ def test_plot_feature_correlation_heatmap_writes_png(tmp_path):
 
     plot_feature_correlation_heatmap(
         correlation_df=build_feature_correlations(),
+        output_path=output_path,
+    )
+
+    assert output_path.exists()
+
+def test_prepare_selected_grouping_pca_data_adds_components():
+    data, explained_variance = prepare_selected_grouping_pca_data(
+        feature_matrix=build_feature_matrix(),
+        membership=build_membership(),
+    )
+
+    assert 'PC1' in data.columns
+    assert 'PC2' in data.columns
+    assert 'cluster_id' in data.columns
+    assert len(data) == 4
+    assert len(explained_variance) == 2
+
+
+def test_plot_selected_grouping_pca_projection_writes_png(tmp_path):
+    output_path = tmp_path / 'selected_grouping_pca_projection.png'
+
+    plot_selected_grouping_pca_projection(
+        feature_matrix=build_feature_matrix(),
+        membership=build_membership(),
         output_path=output_path,
     )
 

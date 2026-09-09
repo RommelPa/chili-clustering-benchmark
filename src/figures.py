@@ -9,6 +9,37 @@ matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from sklearn.decomposition import PCA
+
+
+ALGORITHM_LABELS = {
+    'spectral': 'Spectral',
+    'birch': 'BIRCH',
+    'gaussian_mixture': 'Gaussian mixture',
+    'agglomerative': 'Agglomerative',
+    'kmeans': 'K-means',
+    'dbscan': 'DBSCAN',
+}
+
+
+def format_algorithm_label(algorithm_name: str) -> str:
+    """Format algorithm name for figures."""
+    return ALGORITHM_LABELS.get(str(algorithm_name), str(algorithm_name))
+
+
+def format_cluster_label(cluster_id: str) -> str:
+    """Format cluster label for figures."""
+    return str(cluster_id).replace('_', ' ').title()
+
+
+def format_grouping_label(grouping_id: str) -> str:
+    """Format internal partition id as public grouping label."""
+    numeric_id = str(grouping_id).split('_')[-1]
+
+    if numeric_id.isdigit():
+        return f'A-{int(numeric_id):03d}'
+
+    return str(grouping_id)
 
 
 def get_table_output_dir(experiments_config: dict[str, Any]) -> Path:
@@ -57,7 +88,7 @@ def prepare_partition_score_data(
     final_partitions: pd.DataFrame,
     top_n: int = 10,
 ) -> pd.DataFrame:
-    """Prepare top partition score data for plotting."""
+    """Prepare top grouping score data for plotting."""
     required_columns = [
         'final_partition_rank',
         'partition_id',
@@ -73,14 +104,18 @@ def prepare_partition_score_data(
     ]
 
     if missing:
-        raise ValueError(f'Missing partition ranking columns: {missing}')
+        raise ValueError(f'Missing final ranking columns: {missing}')
 
-    return (
+    data = (
         final_partitions[required_columns]
         .sort_values('final_partition_rank')
         .head(top_n)
         .reset_index(drop=True)
     )
+
+    data['grouping_label'] = data['partition_id'].map(format_grouping_label)
+
+    return data
 
 
 def prepare_cluster_difference_matrix(
@@ -164,18 +199,22 @@ def prepare_algorithm_score_data(
     if missing:
         raise ValueError(f'Missing algorithm score columns: {missing}')
 
-    return (
+    data = (
         algorithm_summary[required_columns]
         .dropna(subset=['best_final_score'])
         .sort_values('best_final_score', ascending=False)
         .reset_index(drop=True)
     )
 
+    data['algorithm_label'] = data['algorithm_name'].map(format_algorithm_label)
+
+    return data
+
 
 def prepare_valid_partition_data(
     algorithm_summary: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Prepare valid partition counts by algorithm."""
+    """Prepare retained grouping counts by algorithm."""
     required_columns = [
         'algorithm_name',
         'n_configurations',
@@ -189,9 +228,9 @@ def prepare_valid_partition_data(
     ]
 
     if missing:
-        raise ValueError(f'Missing valid partition columns: {missing}')
+        raise ValueError(f'Missing retained grouping columns: {missing}')
 
-    return (
+    data = (
         algorithm_summary[required_columns]
         .sort_values(
             by=['n_valid_partitions', 'n_configurations'],
@@ -199,6 +238,11 @@ def prepare_valid_partition_data(
         )
         .reset_index(drop=True)
     )
+
+    data['algorithm_label'] = data['algorithm_name'].map(format_algorithm_label)
+
+    return data
+
 
 def load_feature_correlation_data(
     experiments_config: dict[str, Any],
@@ -208,6 +252,16 @@ def load_feature_correlation_data(
     correlation_path = table_dir / 'feature_correlations.csv'
 
     return pd.read_csv(correlation_path, index_col=0)
+
+
+def load_standardized_feature_matrix(
+    experiments_config: dict[str, Any],
+) -> pd.DataFrame:
+    """Load standardized annual feature matrix."""
+    table_dir = get_table_output_dir(experiments_config)
+    matrix_path = table_dir / 'matrix_base_operativa_zscore.csv'
+
+    return pd.read_csv(matrix_path)
 
 
 def prepare_feature_correlation_matrix(
@@ -243,6 +297,134 @@ def prepare_feature_correlation_matrix(
     ]
 
     return matrix
+
+
+def prepare_selected_grouping_pca_data(
+    feature_matrix: pd.DataFrame,
+    membership: pd.DataFrame,
+) -> tuple[pd.DataFrame, list[float]]:
+    """Project selected grouping into two PCA components."""
+    required_matrix_columns = ['AH', 'AH_YEAR']
+    required_membership_columns = ['AH', 'cluster_id']
+
+    missing_matrix = [
+        column for column in required_matrix_columns
+        if column not in feature_matrix.columns
+    ]
+    missing_membership = [
+        column for column in required_membership_columns
+        if column not in membership.columns
+    ]
+
+    if missing_matrix:
+        raise ValueError(f'Missing feature matrix columns: {missing_matrix}')
+
+    if missing_membership:
+        raise ValueError(f'Missing membership columns: {missing_membership}')
+
+    feature_columns = [
+        column for column in feature_matrix.columns
+        if column not in {'AH', 'AH_YEAR'}
+    ]
+
+    if len(feature_columns) < 2:
+        raise ValueError('At least two feature columns are required for PCA.')
+
+    values = feature_matrix[feature_columns].apply(
+        pd.to_numeric,
+        errors='coerce',
+    )
+
+    if values.isna().any().any():
+        raise ValueError('Feature matrix contains non-numeric values.')
+
+    pca = PCA(n_components=2)
+    components = pca.fit_transform(values)
+
+    pca_data = feature_matrix[['AH', 'AH_YEAR']].copy()
+    pca_data['PC1'] = components[:, 0]
+    pca_data['PC2'] = components[:, 1]
+
+    cluster_data = membership[['AH', 'cluster_id']].copy()
+
+    pca_data = pca_data.merge(
+        cluster_data,
+        on='AH',
+        how='left',
+        validate='one_to_one',
+    )
+
+    if pca_data['cluster_id'].isna().any():
+        raise ValueError('Some hydrological years do not have cluster labels.')
+
+    explained_variance = pca.explained_variance_ratio_.tolist()
+
+    return pca_data.sort_values('AH_YEAR').reset_index(drop=True), explained_variance
+
+
+def plot_selected_grouping_pca_projection(
+    feature_matrix: pd.DataFrame,
+    membership: pd.DataFrame,
+    output_path: Path,
+) -> Path:
+    """Plot PCA projection of the selected grouping."""
+    data, explained_variance = prepare_selected_grouping_pca_data(
+        feature_matrix=feature_matrix,
+        membership=membership,
+    )
+
+    fig, ax = plt.subplots(figsize=(7.2, 5.2))
+
+    for cluster_id, cluster_data in data.groupby('cluster_id', sort=True):
+        ax.scatter(
+            cluster_data['PC1'],
+            cluster_data['PC2'],
+            s=46,
+            label=format_cluster_label(cluster_id),
+            zorder=3,
+        )
+
+        for _, row in cluster_data.iterrows():
+            label = str(row['AH']).replace('AH-', '')
+            ax.annotate(
+                label,
+                (row['PC1'], row['PC2']),
+                textcoords='offset points',
+                xytext=(0, 6),
+                ha='center',
+                fontsize=7,
+            )
+
+    ax.axhline(0, linewidth=0.7, alpha=0.35)
+    ax.axvline(0, linewidth=0.7, alpha=0.35)
+
+    ax.set_xlabel(
+        f'PC1 ({explained_variance[0] * 100:.1f}%)',
+        fontsize=8,
+    )
+    ax.set_ylabel(
+        f'PC2 ({explained_variance[1] * 100:.1f}%)',
+        fontsize=8,
+    )
+    ax.tick_params(axis='both', labelsize=7)
+    ax.grid(True, linewidth=0.4, alpha=0.35)
+
+    ax.legend(
+        title='Cluster',
+        fontsize=7,
+        title_fontsize=7,
+        loc='upper center',
+        bbox_to_anchor=(0.5, -0.18),
+        ncol=data['cluster_id'].nunique(),
+        frameon=True,
+    )
+
+    fig.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close(fig)
+
+    return output_path
 
 
 def plot_feature_correlation_heatmap(
@@ -304,10 +486,10 @@ def plot_final_partition_scores(
     output_path: Path,
     top_n: int = 10,
 ) -> Path:
-    """Plot final scores for top-ranked partitions."""
+    """Plot final scores for top-ranked groupings."""
     data = prepare_partition_score_data(final_partitions, top_n=top_n)
     labels = (
-        data["partition_id"].astype(str)
+        data["grouping_label"].astype(str)
         + "\nK="
         + data["n_clusters"].astype(str)
     )
@@ -316,7 +498,7 @@ def plot_final_partition_scores(
     bars = ax.bar(labels, data["final_score"])
 
     ax.set_ylim(0, 1.05)
-    ax.set_xlabel("Candidate partition", fontsize=8)
+    ax.set_xlabel("Candidate grouping", fontsize=8)
     ax.set_ylabel("Final integrated score", fontsize=8)
     ax.tick_params(axis="both", labelsize=7)
     ax.tick_params(axis="x", rotation=45)
@@ -338,6 +520,7 @@ def plot_final_partition_scores(
     plt.close(fig)
 
     return output_path
+
 
 def plot_cluster_difference_profile(
     differences: pd.DataFrame,
@@ -371,6 +554,7 @@ def plot_cluster_difference_profile(
     plt.close(fig)
 
     return output_path
+
 
 def plot_year_typology(
     membership: pd.DataFrame,
@@ -413,6 +597,7 @@ def plot_year_typology(
 
     return output_path
 
+
 def plot_best_score_by_algorithm(
     algorithm_summary: pd.DataFrame,
     output_path: Path,
@@ -421,7 +606,7 @@ def plot_best_score_by_algorithm(
     data = prepare_algorithm_score_data(algorithm_summary)
 
     fig, ax = plt.subplots(figsize=(8, 4))
-    bars = ax.barh(data["algorithm_name"], data["best_final_score"])
+    bars = ax.barh(data["algorithm_label"], data["best_final_score"])
 
     ax.set_xlim(0, 1.08)
     ax.set_xlabel("Best final integrated score", fontsize=8)
@@ -454,15 +639,15 @@ def plot_valid_partitions_by_algorithm(
     algorithm_summary: pd.DataFrame,
     output_path: Path,
 ) -> Path:
-    """Plot valid partition counts by algorithm."""
+    """Plot retained grouping counts by algorithm."""
     data = prepare_valid_partition_data(algorithm_summary)
 
     fig, ax = plt.subplots(figsize=(8, 4))
-    bars = ax.barh(data["algorithm_name"], data["n_valid_partitions"])
+    bars = ax.barh(data["algorithm_label"], data["n_valid_partitions"])
 
     max_configurations = int(data["n_configurations"].max())
     ax.set_xlim(0, max_configurations + 2)
-    ax.set_xlabel("Valid partitions", fontsize=8)
+    ax.set_xlabel("Retained groupings", fontsize=8)
     ax.set_ylabel("Algorithm", fontsize=8)
     ax.tick_params(axis="both", labelsize=7)
     ax.invert_yaxis()
@@ -489,6 +674,7 @@ def plot_valid_partitions_by_algorithm(
 
     return output_path
 
+
 def get_figure_paths(
     experiments_config: dict[str, Any],
 ) -> dict[str, Path]:
@@ -510,6 +696,9 @@ def get_figure_paths(
         'feature_correlation_heatmap': (
             figure_dir / 'feature_correlation_heatmap.png'
         ),
+        'selected_grouping_pca_projection': (
+            figure_dir / 'selected_grouping_pca_projection.png'
+        ),
     }
 
 
@@ -524,6 +713,7 @@ def generate_figures(
         algorithm_summary,
     ) = load_required_outputs(experiments_config)
     correlation_df = load_feature_correlation_data(experiments_config)
+    feature_matrix = load_standardized_feature_matrix(experiments_config)
     figure_paths = get_figure_paths(experiments_config)
 
     plot_final_partition_scores(
@@ -550,6 +740,11 @@ def generate_figures(
         correlation_df=correlation_df,
         output_path=figure_paths['feature_correlation_heatmap'],
     )
+    plot_selected_grouping_pca_projection(
+        feature_matrix=feature_matrix,
+        membership=membership,
+        output_path=figure_paths['selected_grouping_pca_projection'],
+    )
 
     print('[figures] Figuras generadas correctamente')
     for name, path in figure_paths.items():
@@ -563,4 +758,3 @@ if __name__ == '__main__':
 
     experiments_config = load_experiments_config()
     generate_figures(experiments_config)
-
