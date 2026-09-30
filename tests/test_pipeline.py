@@ -62,6 +62,11 @@ def patch_pipeline_dependencies(monkeypatch, calls: list[str]) -> None:
         assert config == {'config': 'experiments'}
         calls.append('final_ranking')
 
+    def fake_run_statistical_tests(pipeline_config, experiments_config):
+        assert pipeline_config == {'config': 'pipeline'}
+        assert experiments_config == {'config': 'experiments'}
+        calls.append('statistical_tests')
+
     def fake_run_algorithm_analysis(config):
         assert config == {'config': 'experiments'}
         calls.append('algorithm_analysis')
@@ -89,6 +94,11 @@ def patch_pipeline_dependencies(monkeypatch, calls: list[str]) -> None:
         fake_run_stability_analysis,
     )
     monkeypatch.setattr(pipeline, 'run_final_ranking', fake_run_final_ranking)
+    monkeypatch.setattr(
+        pipeline,
+        'run_statistical_tests',
+        fake_run_statistical_tests,
+    )
     monkeypatch.setattr(
         pipeline,
         'run_algorithm_analysis',
@@ -129,6 +139,7 @@ def test_run_pipeline_calls_all_steps_when_stability_is_complete(monkeypatch):
         'stability',
         'max_runs=None',
         'final_ranking',
+        'statistical_tests',
         'algorithm_analysis',
         'interpretation',
         'figures',

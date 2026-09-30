@@ -13,6 +13,7 @@ from src.interpretation import run_interpretation
 from src.partition_equivalence import run_partition_equivalence
 from src.ranking import run_ranking
 from src.stability import run_stability_analysis
+from src.statistical_tests import run_statistical_tests
 
 
 PIPELINE_STEPS = [
@@ -23,6 +24,7 @@ PIPELINE_STEPS = [
     'partition_equivalence',
     'stability',
     'final_ranking',
+    'statistical_tests',
     'algorithm_analysis',
     'interpretation',
     'figures',
@@ -104,6 +106,14 @@ def run_pipeline(
     run_final_ranking(experiments_config)
     completed_steps.append('final_ranking')
     print_step_done('final_ranking')
+
+    print_step_start('statistical_tests')
+    run_statistical_tests(
+        pipeline_config=pipeline_config,
+        experiments_config=experiments_config,
+    )
+    completed_steps.append('statistical_tests')
+    print_step_done('statistical_tests')
 
     print_step_start('algorithm_analysis')
     run_algorithm_analysis(experiments_config)

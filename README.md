@@ -66,6 +66,7 @@ ranking
 partition_equivalence
 stability
 final_ranking
+statistical_tests
 algorithm_analysis
 interpretation
 figures
@@ -83,6 +84,11 @@ Este modo solo valida el flujo hasta estabilidad. No genera ranking final porque
 
 ```text
 outputs/tables/final_partition_ranking.csv
+outputs/tables/statistical_bootstrap_metrics.csv
+outputs/tables/statistical_stability_mannwhitney.csv
+outputs/tables/statistical_silhouette_wilcoxon.csv
+outputs/tables/statistical_ari_matrix.csv
+outputs/tables/statistical_significance_summary.csv
 outputs/tables/algorithm_performance_summary.csv
 outputs/tables/selected_partition_membership.csv
 outputs/tables/selected_cluster_profiles.csv

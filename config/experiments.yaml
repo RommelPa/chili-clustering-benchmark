@@ -189,6 +189,14 @@ ranking:
     penalizacion_ruido: 0.05
     penalizacion_cluster_pequeno: 0.05
     estabilidad: 0.25
+pruebas_estadisticas:
+  descripcion: 'Comparación estadística entre la partición mejor rankeada y las
+    demás particiones únicas retenidas, usando bootstrap pareado sobre métricas
+    internas y Mann-Whitney U sobre la estabilidad por submuestreo.
+
+    '
+  n_bootstrap: 10000
+  nivel_significancia: 0.05
 salidas:
   tablas:
     benchmark_runs: outputs/tables/benchmark_runs.csv
