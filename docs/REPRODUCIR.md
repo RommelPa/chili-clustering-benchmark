@@ -1,38 +1,30 @@
-# Revisar y reproducir en Windows (PowerShell)
+# Reproducir el pipeline en Windows
 
-## Aplicar el parche a su clon
+Ejecute desde la raíz de un clon Git del repositorio. Se requieren Git, uv y la fuente exacta del estudio. No se requiere Docker.
 
-Trabaje desde la carpeta del repositorio. El parche parte del commit f7799fcc9a8138e24eac24350eb46dcd71f5ca3d. Primero revise sus cambios locales: si existen, guárdelos en un commit propio antes de aplicar. No use reset --hard.
-
-```powershell
-git status --short
-git rev-parse HEAD
-git switch -c auditoria-articulo
-git apply --stat "C:\ruta\auditoria-cambios.patch"
-git apply --check "C:\ruta\auditoria-cambios.patch"
-git apply "C:\ruta\auditoria-cambios.patch"
-git diff --stat
-git diff
-```
-
-Si --check falla, deténgase y revise la divergencia; no fuerce el parche. El ZIP es una copia del código actualizado, sin datos ni historial Git. Copiarlo encima del clon NO elimina archivos retirados: prefiera el parche. Este elimina src/statistical_tests.py y tests/test_statistical_tests.py y agrega su reemplazo descriptivo.
-
-## Preparar entorno y fuente
-
-Instale uv según su documentación oficial. El lockfile fija dependencias; no ejecute uv lock ni uv sync --upgrade para reproducir esta auditoría.
+## Entorno y datos
 
 ```powershell
 uv sync --locked --python 3.11
 ```
 
-Copie el XLSM original a data/raw/BDREPRESAS.xlsm. Alternativamente, copie BDREPRESAS.xlsx a data/raw/BDREPRESAS.xlsx y cambie únicamente rutas.datos_crudos en config/pipeline.yaml. Los valores BASE del período son idénticos en ambas fuentes verificadas, pero sus hashes serán distintos. Guarde el Excel recalculado antes de usarlo; openpyxl no recalcula fórmulas.
+El lockfile fija dependencias. No lo regenere ni actualice paquetes para reproducir una versión publicada. Coloque el Excel en data/raw/ y configure su ruta en rutas.datos_crudos de config/pipeline.yaml. XLSX y XLSM se leen con valores guardados; no se ejecutan macros ni se recalculan fórmulas. Conserve un archivo previamente recalculado y guardado por Excel.
 
-## Revisar y ejecutar
+## Verificaciones
 
 ```powershell
-uv run --locked pytest -v
+uv run --locked pytest -q
 uv run --locked ruff check .
 uv run --locked mypy src
+```
+
+Las pruebas de integración requieren la fuente; una suite que las omite no verifica la lectura real. Las advertencias sobre un gráfico interno de Excel deben distinguirse de errores en las celdas utilizadas.
+
+## Ejecución completa desde salidas limpias
+
+La primera instrucción enumera archivos generados. --apply los elimina; conserva fuente, entorno e historial MLflow. No limpie mientras hay una ejecución activa. Guarde fuera de esas carpetas los resultados de una versión que necesite conservar.
+
+```powershell
 uv run --locked python scripts/clean_outputs.py
 uv run --locked python scripts/clean_outputs.py --apply
 $env:OMP_NUM_THREADS="1"
@@ -41,20 +33,22 @@ $env:MKL_NUM_THREADS="1"
 uv run --locked python -m src.pipeline
 ```
 
-La primera limpieza solo enumera. --apply elimina resultados generados conocidos; conserva datos crudos, entorno e historial MLflow. El orden evita mezclar salidas viejas con la nueva ejecución. No limpie durante una ejecución.
+El pipeline genera sus dependencias en orden y lee el Excel una sola vez. La ejecución completa produce once etapas y un manifiesto. Para la fuente y configuración verificadas: 5.114 días, 14 años, cinco variables, 66 configuraciones, 38 retenidas y 14 particiones únicas. Cambiar fuente o diseño puede cambiar los resultados.
 
-Una prueba corta opcional es python -m src.pipeline --no-mlflow --max-stability-runs 5 dentro de uv run --locked. No produce todos los resultados finales ni reemplaza la ejecución completa.
-
-Resultados esperados con la configuración auditada: 14 años, cinco variables, 66 configuraciones, 38 retenidas, 14 particiones únicas y representante spectral_001 con dos grupos. Compare outputs/reports/run_manifest.json: fuente, código, configuración, Python y versiones. IDs y puntajes pueden cambiar si se modifica el diseño. La comparación entre particiones es descriptiva; no produce p-valores.
-
-## Herramientas y artículo
-
-Se conservan Python, uv/uv.lock, pandas, NumPy, SciPy, scikit-learn, Pandera, openpyxl, Matplotlib y MLflow; pytest, Ruff y mypy verifican el código. No hace falta añadir otra plataforma para este alcance. Informe las versiones efectivas del manifiesto en el artículo, no las mínimas de pyproject.toml. Una reproducción exige también conservar la fuente exacta y reconocer el cambio de curvas de volumen en octubre de 2025.
-
-Después de revisar:
+## Prueba corta y etapas independientes
 
 ```powershell
-git add README.md .gitignore config src tests docs scripts
-git commit -m "Audit hydrological clustering pipeline and reproducibility"
-git push -u origin auditoria-articulo
+uv run --locked python -m src.pipeline --no-mlflow --max-stability-runs 5
 ```
+
+La prueba corta termina en estabilidad y no produce resultados finales completos. No interprete resultados anteriores que hayan quedado en las carpetas como resultados de esa prueba.
+
+Los módulos se pueden ejecutar por separado con python -m src.NOMBRE dentro de uv run --locked. Deben ejecutarse en el orden indicado en el README: los módulos posteriores leen tablas producidas anteriormente y no comprueban automáticamente toda su procedencia. Ante cambios de fuente o configuración, use la ejecución completa desde salidas limpias.
+
+## Conservar y revisar resultados
+
+Compruebe outputs/reports/run_manifest.json. Las versiones que se reportan en el artículo son las efectivas del manifiesto, no las mínimas de pyproject.toml. Conserve las advertencias registradas en las tablas.
+
+Para revisión: membresía seleccionada, perfiles originales, ranking de particiones, resumen de estabilidad y comparación descriptiva. La selección de figuras para el artículo requiere revisión visual. Las tablas intermedias y las iteraciones detalladas permiten rastrear los resultados; no necesitan publicarse todas como tablas del manuscrito.
+
+MLflow guarda experimentos localmente según config/experiments.yaml. Su historial no se elimina con clean_outputs.py. Datos, resultados y el respaldo temporal de auditoría están excluidos de Git.
