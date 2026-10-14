@@ -1,4 +1,4 @@
-﻿import pandas as pd
+import pandas as pd
 
 from src.algorithm_analysis import (
     build_algorithm_performance_summary,

@@ -1,4 +1,4 @@
-﻿import pandas as pd
+import pandas as pd
 import pytest
 
 from src.final_ranking import (
@@ -25,7 +25,7 @@ def build_config(tmp_path=None) -> dict:
                 'calinski_harabasz': 0.20,
                 'estabilidad': 0.25,
                 'penalizacion_ruido': 0.05,
-                'penalizacion_cluster_pequeno': 0.05,
+                'penalizacion_desbalance': 0.05,
             }
         },
         'salidas': {
@@ -55,7 +55,7 @@ def build_ranking() -> pd.DataFrame:
                 'davies_bouldin_norm': 1.0,
                 'calinski_harabasz_norm': 1.0,
                 'noise_penalty_value': 0.0,
-                'cluster_size_penalty_value': 0.6,
+                'cluster_imbalance_penalty_value': 0.6,
             },
             {
                 'rank': 2,
@@ -73,7 +73,7 @@ def build_ranking() -> pd.DataFrame:
                 'davies_bouldin_norm': 1.0,
                 'calinski_harabasz_norm': 1.0,
                 'noise_penalty_value': 0.0,
-                'cluster_size_penalty_value': 0.6,
+                'cluster_imbalance_penalty_value': 0.6,
             },
             {
                 'rank': 3,
@@ -91,7 +91,7 @@ def build_ranking() -> pd.DataFrame:
                 'davies_bouldin_norm': 0.5,
                 'calinski_harabasz_norm': 0.3,
                 'noise_penalty_value': 0.0,
-                'cluster_size_penalty_value': 0.75,
+                'cluster_imbalance_penalty_value': 0.75,
             },
         ]
     )

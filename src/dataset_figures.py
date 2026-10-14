@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
@@ -41,7 +41,7 @@ HYDRO_MONTH_LABELS = [
     "Nov",
 ]
 
-REFERENCE_CAPACITY_HM3 = 393.0
+
 
 
 def get_dataset_path(pipeline_config: dict[str, Any]) -> Path:
@@ -190,6 +190,7 @@ def prepare_seasonal_envelope(hydro_monthly: pd.DataFrame) -> pd.DataFrame:
 def plot_figure_1_monthly_total_storage(
     monthly: pd.DataFrame,
     output_path: str | Path,
+    reference_capacity_hm3: float = 393.0,
 ) -> Path:
     """Plot Figure 1: monthly evolution of total useful storage."""
     output = Path(output_path)
@@ -206,11 +207,11 @@ def plot_figure_1_monthly_total_storage(
     )
 
     ax.axhline(
-        REFERENCE_CAPACITY_HM3,
+        reference_capacity_hm3,
         linestyle="--",
         linewidth=0.9,
         color="#6c757d",
-        label="Maximum useful capacity",
+        label="Bathymetric useful capacity reference",
     )
 
     ax.axvspan(
@@ -218,7 +219,7 @@ def plot_figure_1_monthly_total_storage(
         pd.Timestamp("2015-11-30"),
         color="#c0392b",
         alpha=0.15,
-        label="Drought period: AH-2014/2015",
+        label="Low-storage years: AH-2014/2015",
     )
 
     ax.axvspan(
@@ -226,7 +227,7 @@ def plot_figure_1_monthly_total_storage(
         pd.Timestamp("2025-11-30"),
         color="#2e86c1",
         alpha=0.15,
-        label="Wet year: AH-2025",
+        label="High-storage year: AH-2025",
     )
 
     december_starts = monthly.loc[
@@ -314,7 +315,7 @@ def plot_figure_2_seasonal_storage_pattern(
         marker="o",
         markersize=3,
         color="#1f4e79",
-        label="Typical year (median)",
+        label="Monthly median",
     )
 
     highlight_styles = {
@@ -354,9 +355,9 @@ def plot_figure_2_seasonal_storage_pattern(
 
     ax.set_xticks(range(1, 13))
     ax.set_xticklabels(HYDRO_MONTH_LABELS)
-    ax.set_ylim(0, 1.15)
+    ax.set_ylim(0, max(1.15, float(envelope["max_value"].max()) * 1.05))
     ax.set_xlabel("Hydrological-year month", fontsize=8)
-    ax.set_ylabel("Normalized useful storage", fontsize=8)
+    ax.set_ylabel("Relative useful storage", fontsize=8)
     ax.tick_params(axis="both", labelsize=7)
     ax.grid(True, linewidth=0.4, alpha=0.35)
 
@@ -389,7 +390,12 @@ def generate_dataset_figures(
     figure_1_path = output_dir / "figure_1_monthly_total_storage.png"
     figure_2_path = output_dir / "figure_2_seasonal_storage_pattern.png"
 
-    plot_figure_1_monthly_total_storage(monthly, figure_1_path)
+    plot_figure_1_monthly_total_storage(
+        monthly, figure_1_path,
+        reference_capacity_hm3=float(
+            pipeline_config["embalses"]["capacidad_util_maxima_sistema_hm3"]
+        ),
+    )
     plot_figure_2_seasonal_storage_pattern(
         hydro_monthly,
         envelope,

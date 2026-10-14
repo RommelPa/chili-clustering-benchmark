@@ -36,7 +36,7 @@ dataset:
       etiqueta: "Estiaje"
       descripcion: "Período seco operativo: 1 junio a 30 noviembre."
 
-  completitud_minima: 0.90
+  politica_datos_primarios: completos_sin_imputacion
 
 embalses:
   sufijos:
@@ -48,14 +48,11 @@ embalses:
     CH: Chalhuanca
     BA: Bamputañe
 
-  capacidad_util_operativa_hm3:
-    AB: 33.334042
-    FR: 148.716144
-    PÑ: 109.420601
-    DE: 10.829480
-    PI: 84.547431
-    CH: 28.750000
-    BA: 42.129269
+  # DATOSTEC!D15 = 393.1781031 hm3; referencia común redondeada.
+  # Batimetrías 2025: Frayle desde 01/10, Pañe desde 04/10.
+  # No equivale a la capacidad histórica vigente; el registro puede excederla.
+  capacidad_util_maxima_sistema_hm3: 393.0
+
 
 variables:
   familias_por_embalse:
@@ -85,13 +82,14 @@ variables:
 
   especiales:
     - codigo: INGCHINEGASA
-      nombre: Ingreso medido al sistema
+      nombre: Ingreso a Aguada Blanca (registro EGASA)
       embalse: AB
       unidad: m3/s
       tipo: flujo
       descripcion: >
-        Caudal de ingreso medido en Aguada Blanca. Se usa como señal
-        directa de ingreso agregado al sistema.
+        Registro INGCHINEGASA usado como señal de ingreso en Aguada Blanca.
+        En BDREPRESAS se obtiene por balance de almacenamiento y salidas;
+        no representa automáticamente el aporte natural total a los siete embalses.
 
 archivo_fuente:
   hoja_datos: BASE
@@ -106,26 +104,26 @@ features:
       ventana: ano_hidrologico
       descripcion: >
         Mínimo anual del volumen útil total del sistema, normalizado por
-        la capacidad útil operativa total.
+        la capacidad útil de referencia batimétrica (393 hm3).
     - codigo: vol_amp
       nombre: Amplitud anual de almacenamiento
       unidad: adimensional
       ventana: ano_hidrologico
       descripcion: >
         Diferencia entre el máximo y el mínimo anual del volumen útil
-        total, normalizada por la capacidad útil operativa total.
+        total, normalizada por la capacidad útil de referencia batimétrica (393 hm3).
     - codigo: inflow_avenida
       nombre: Inflow medio en avenida
       unidad: m3/s
       ventana: avenida
       descripcion: >
-        Promedio del ingreso medido durante la ventana de avenida.
+        Promedio del ingreso registrado durante la ventana de avenida.
     - codigo: inflow_estiaje
       nombre: Inflow medio en estiaje
       unidad: m3/s
       ventana: estiaje
       descripcion: >
-        Promedio del ingreso medido durante la ventana de estiaje.
+        Promedio del ingreso registrado durante la ventana de estiaje.
     - codigo: dias_derrame
       nombre: Días con derrame
       unidad: dias/ano

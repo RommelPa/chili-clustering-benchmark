@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
@@ -24,7 +24,7 @@ REQUIRED_RANKING_COLUMNS = [
     'davies_bouldin_norm',
     'calinski_harabasz_norm',
     'noise_penalty_value',
-    'cluster_size_penalty_value',
+    'cluster_imbalance_penalty_value',
 ]
 
 REQUIRED_STABILITY_COLUMNS = [
@@ -118,11 +118,11 @@ def calculate_final_scores(
     result['positive_score'] = result['positive_score'] / positive_total
 
     noise_weight = float(weights.get('penalizacion_ruido', 0.0))
-    cluster_weight = float(weights.get('penalizacion_cluster_pequeno', 0.0))
+    cluster_weight = float(weights.get('penalizacion_desbalance', 0.0))
 
     result['final_penalty'] = (
         noise_weight * result['noise_penalty_value'].astype(float)
-        + cluster_weight * result['cluster_size_penalty_value'].astype(float)
+        + cluster_weight * result['cluster_imbalance_penalty_value'].astype(float)
     )
 
     result['final_score'] = (

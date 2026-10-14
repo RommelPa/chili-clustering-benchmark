@@ -1,8 +1,9 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from src.config_loader import load_pipeline_config
@@ -61,6 +62,31 @@ def get_columns_by_prefix(config: dict[str, Any], prefix: str) -> list[str]:
     return [f'{prefix}{suffix}' for suffix in suffixes]
 
 
+def validate_operational_data(data: pd.DataFrame, config: dict[str, Any]) -> None:
+    """Reject incomplete primary inputs rather than silently summing partial data."""
+    dates = pd.DatetimeIndex(data['FECHA'])
+    expected = pd.date_range(
+        config['dataset']['periodo_inicio'], config['dataset']['periodo_fin'], freq='D'
+    )
+    if dates.duplicated().any():
+        raise ValueError('Duplicate daily dates in study period.')
+    if len(expected.difference(dates)):
+        raise ValueError('Missing daily dates in study period.')
+    columns = (
+        get_columns_by_prefix(config, 'VOLUTIL')
+        + get_columns_by_prefix(config, 'REBOSE_EVENT')
+        + ['INGCHINEGASA']
+    )
+    inputs = data[columns]
+    if inputs.isna().any().any():
+        missing = inputs.columns[inputs.isna().any()].tolist()
+        raise ValueError(f'Missing primary operational values: {missing}')
+    if (inputs < 0).any().any():
+        raise ValueError('Negative primary operational values.')
+    if not np.isfinite(inputs.to_numpy(dtype=float)).all():
+        raise ValueError('Non-finite primary operational values.')
+
+
 def calculate_daily_operational_aggregates(
     data: pd.DataFrame,
     config: dict[str, Any],
@@ -72,16 +98,19 @@ def calculate_daily_operational_aggregates(
     discharge_columns = get_columns_by_prefix(config, 'DESCARGA')
     spill_columns = get_columns_by_prefix(config, 'REBOSE')
 
-    total_capacity_hm3 = sum(
-        float(value)
-        for value in config['embalses']['capacidad_util_operativa_hm3'].values()
+    total_capacity_hm3 = float(
+        config['embalses']['capacidad_util_maxima_sistema_hm3']
     )
+    if total_capacity_hm3 <= 0:
+        raise ValueError('System useful capacity must be positive.')
 
-    result['VOL_TOTAL_HM3'] = result[volume_columns].sum(axis=1) / 1_000_000
+    result['VOL_TOTAL_HM3'] = result[volume_columns].sum(axis=1, min_count=len(volume_columns)) / 1_000_000
     result['VOL_TOTAL_REL'] = result['VOL_TOTAL_HM3'] / total_capacity_hm3
-    result['DESC_TOTAL_M3S'] = result[discharge_columns].sum(axis=1)
-    result['REBOSE_TOTAL_M3S'] = result[spill_columns].sum(axis=1)
-    result['DERRAME_FLAG'] = result['REBOSE_TOTAL_M3S'].gt(0).astype(int)
+    result['DESC_TOTAL_M3S'] = result[discharge_columns].sum(axis=1, min_count=len(discharge_columns))
+    result['REBOSE_TOTAL_M3S'] = result[spill_columns].sum(axis=1, min_count=len(spill_columns))
+    event_columns = get_columns_by_prefix(config, 'REBOSE_EVENT')
+    occurrence = result[event_columns] if set(event_columns).issubset(result) else result[spill_columns].gt(0)
+    result['DERRAME_FLAG'] = occurrence.eq(1).any(axis=1).astype(int)
 
     return result
 
@@ -126,6 +155,7 @@ def preprocess_daily_data(config: dict[str, Any] | str | Path) -> pd.DataFrame:
     raw_data = load_raw_data(config)
 
     processed = filter_study_period(raw_data, config)
+    validate_operational_data(processed, config)
     processed = assign_hydrological_year(processed, config)
     processed = assign_operational_season(processed, config)
     processed = calculate_daily_operational_aggregates(processed, config)

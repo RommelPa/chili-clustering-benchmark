@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from pathlib import Path
 
@@ -120,6 +120,7 @@ def test_generate_dataset_figures_creates_two_png_files(tmp_path: Path):
     output_dir = tmp_path / "figures"
 
     pipeline_config = {
+        "embalses": {"capacidad_util_maxima_sistema_hm3": 393.0},
         "rutas": {
             "dataset_procesado": str(dataset_path),
             "carpeta_figuras": str(output_dir),

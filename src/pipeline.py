@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 from src.dataset_figures import generate_dataset_figures
 
 import argparse
@@ -13,7 +13,8 @@ from src.interpretation import run_interpretation
 from src.partition_equivalence import run_partition_equivalence
 from src.ranking import run_ranking
 from src.stability import run_stability_analysis
-from src.statistical_tests import run_statistical_tests
+from src.partition_comparison import run_partition_comparison
+from src.provenance import save_run_manifest
 
 
 PIPELINE_STEPS = [
@@ -24,7 +25,7 @@ PIPELINE_STEPS = [
     'partition_equivalence',
     'stability',
     'final_ranking',
-    'statistical_tests',
+    'partition_comparison',
     'algorithm_analysis',
     'interpretation',
     'figures',
@@ -95,9 +96,9 @@ def run_pipeline(
 
     if max_stability_runs is not None:
         print('')
-        print('[pipeline] Ejecuci?n de prueba completada hasta stability')
+        print('[pipeline] Ejecución de prueba completada hasta stability')
         print(
-            '[pipeline] max_stability_runs est? activo; '
+            '[pipeline] max_stability_runs está activo; '
             'se omiten pasos que requieren estabilidad completa.'
         )
         return completed_steps
@@ -107,13 +108,13 @@ def run_pipeline(
     completed_steps.append('final_ranking')
     print_step_done('final_ranking')
 
-    print_step_start('statistical_tests')
-    run_statistical_tests(
+    print_step_start('partition_comparison')
+    run_partition_comparison(
         pipeline_config=pipeline_config,
         experiments_config=experiments_config,
     )
-    completed_steps.append('statistical_tests')
-    print_step_done('statistical_tests')
+    completed_steps.append('partition_comparison')
+    print_step_done('partition_comparison')
 
     print_step_start('algorithm_analysis')
     run_algorithm_analysis(experiments_config)
@@ -134,6 +135,7 @@ def run_pipeline(
     print_step_done('figures')
 
     print('')
+    save_run_manifest(pipeline_config, completed_steps)
     print('[pipeline] Ejecución reproducible completada')
     print('[pipeline] Pasos ejecutados:')
     for step in completed_steps:

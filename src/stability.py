@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+from __future__ import annotations
+
+import warnings
 
 from pathlib import Path
 from typing import Any
@@ -6,9 +8,9 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from src.clustering_models import ClusteringRunSpec, build_run_specs, fit_predict_clustering
+from src.clustering_models import ClusteringRunSpec, build_run_specs, count_effective_clusters, fit_predict_clustering
 from src.config_loader import load_experiments_config, load_pipeline_config
-from src.experiment_matrix import ExperimentMatrix, prepare_experiment_matrices
+from src.experiment_matrix import ExperimentMatrix, build_experiment_matrices
 
 
 def get_sample_size(n_items: int, sample_fraction: float) -> int:
@@ -72,7 +74,8 @@ def calculate_pairwise_stability(
         else float('nan')
     )
     stability_inter = (
-        float((~candidate_same[inter_mask]).mean())
+        float(((~candidate_same) & (candidate[:, None] != -1)
+               & (candidate[None, :] != -1))[inter_mask].mean())
         if inter_mask.any()
         else float('nan')
     )
@@ -143,6 +146,9 @@ def summarize_stability_iterations(
             else float('nan')
         )
 
+    summary['valid_iteration_fraction'] = len(successful) / len(iterations)
+    summary['conditional_stability_score'] = summary['stability_score']
+    summary['stability_score'] *= summary['valid_iteration_fraction']
     return summary
 
 
@@ -160,6 +166,8 @@ def compute_run_stability(
     sample_size = get_sample_size(n_items, sample_fraction)
 
     iteration_rows: list[dict[str, Any]] = []
+    label_cache: dict[tuple[int, ...], np.ndarray] = {}
+    warning_cache: dict[tuple[int, ...], str] = {}
 
     for iteration in range(1, n_iterations + 1):
         sample_indices = np.sort(
@@ -173,7 +181,20 @@ def compute_run_stability(
         try:
             sampled_values = matrix.values[sample_indices]
             sampled_reference = reference_labels[sample_indices]
-            sampled_labels = fit_predict_clustering(spec, sampled_values)
+            cache_key = tuple(int(i) for i in sample_indices)
+            cacheable = ('random_state' in spec.params or spec.algorithm_name in
+                         {'agglomerative', 'birch', 'dbscan'})
+            if cacheable and cache_key in label_cache:
+                sampled_labels = label_cache[cache_key]
+            else:
+                with warnings.catch_warnings(record=True) as recorded:
+                    warnings.simplefilter('always')
+                    sampled_labels = fit_predict_clustering(spec, sampled_values)
+                warning_cache[cache_key] = ' | '.join(sorted({str(w.message) for w in recorded}))
+                if cacheable:
+                    label_cache[cache_key] = sampled_labels
+            if not 2 <= count_effective_clusters(sampled_labels) < sample_size:
+                raise ValueError('Degenerate subsample partition.')
 
             stability = calculate_pairwise_stability(
                 reference_labels=sampled_reference,
@@ -186,8 +207,10 @@ def compute_run_stability(
                     'run_id': spec.run_id,
                     'status': 'success',
                     'sample_size': sample_size,
+                    'sample_signature': '|'.join(str(i) for i in sample_indices),
                     **stability,
                     'error_message': '',
+                    'algorithm_warnings': warning_cache.get(cache_key, ''),
                 }
             )
 
@@ -198,11 +221,13 @@ def compute_run_stability(
                     'run_id': spec.run_id,
                     'status': 'failed',
                     'sample_size': sample_size,
+                    'sample_signature': '|'.join(str(i) for i in sample_indices),
                     'stability_intra': float('nan'),
                     'stability_inter': float('nan'),
                     'stability_score': float('nan'),
                     'stability_gap': float('nan'),
                     'error_message': str(error),
+                    'algorithm_warnings': warning_cache.get(tuple(int(i) for i in sample_indices), ''),
                 }
             )
 
@@ -252,7 +277,7 @@ def get_project_random_state(pipeline_config: dict[str, Any]) -> int:
     return int(
         project_config.get(
             'random_state',
-            project_config.get('seed', 42),
+            project_config.get('semilla_aleatoria', project_config.get('seed', 42)),
         )
     )
 
@@ -297,10 +322,8 @@ def run_stability_analysis(
     if max_runs is not None:
         ranking = ranking.head(max_runs).copy()
 
-    matrices = prepare_experiment_matrices(
-        pipeline_config=pipeline_config,
-        experiments_config=experiments_config,
-    )
+    features = pd.read_csv(pipeline_config['rutas']['features']).sort_values('AH_YEAR')
+    matrices = build_experiment_matrices(features, experiments_config)
     spec_map = build_spec_map(experiments_config)
     matrix_map = build_matrix_map(matrices)
 
@@ -312,7 +335,7 @@ def run_stability_analysis(
     stability_rows: list[dict[str, Any]] = []
     iteration_frames: list[pd.DataFrame] = []
 
-    for index, row in ranking.iterrows():
+    for _, row in ranking.iterrows():
         spec = spec_map[str(row['run_id'])]
         matrix_key = (row['feature_set_name'], row['scaler_name'])
         matrix = matrix_map[matrix_key]
@@ -324,7 +347,7 @@ def run_stability_analysis(
             reference_labels=reference_labels,
             n_iterations=n_iterations,
             sample_fraction=sample_fraction,
-            random_state=random_state + int(index),
+            random_state=random_state,
         )
 
         stability_rows.append(

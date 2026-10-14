@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -82,6 +82,7 @@ def test_calculate_daily_operational_aggregates_on_synthetic_data():
     result = calculate_daily_operational_aggregates(data, config)
 
     assert result.loc[0, 'VOL_TOTAL_HM3'] == 7.0
+    assert result.loc[0, 'VOL_TOTAL_REL'] == pytest.approx(7.0 / 393.0)
     assert result.loc[0, 'DESC_TOTAL_M3S'] == 14.0
     assert result.loc[0, 'REBOSE_TOTAL_M3S'] == 0.0
     assert result.loc[0, 'DERRAME_FLAG'] == 0
@@ -116,3 +117,23 @@ def test_preprocess_daily_data_writes_processed_csv_if_file_exists():
 
     assert output_path.exists()
     assert len(data) > 0
+
+
+def test_operational_validation_rejects_missing_values_and_dates():
+    from src.preprocessing import validate_operational_data
+    config = load_pipeline_config()
+    config['dataset']['periodo_inicio'] = '2025-01-01'
+    config['dataset']['periodo_fin'] = '2025-01-02'
+    data = pd.DataFrame({'FECHA': pd.date_range('2025-01-01', periods=2)})
+    for prefix in ['VOLUTIL', 'REBOSE_EVENT']:
+        for suffix in config['embalses']['sufijos']:
+            data[f'{prefix}{suffix}'] = 0.0
+    data['INGCHINEGASA'] = 1.0
+    validate_operational_data(data, config)
+    with pytest.raises(ValueError, match='Missing daily dates'):
+        validate_operational_data(data.iloc[:1], config)
+    with pytest.raises(ValueError, match='Duplicate daily dates'):
+        validate_operational_data(pd.concat([data, data.iloc[:1]]), config)
+    data.loc[0, 'VOLUTILAB'] = float('nan')
+    with pytest.raises(ValueError, match='Missing primary'):
+        validate_operational_data(data, config)

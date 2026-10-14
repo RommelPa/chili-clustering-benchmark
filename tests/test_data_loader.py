@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -56,7 +56,8 @@ def test_load_raw_data_returns_dataframe_if_file_exists():
 
     assert isinstance(data, pd.DataFrame)
     assert not data.empty
-    assert data.shape[1] == 40
+    assert set(build_standard_expected_columns(config)).issubset(data.columns)
+    assert all(f'REBOSE_EVENT{s}' in data for s in config['embalses']['sufijos'])
 
 
 def test_load_raw_data_has_standardized_exception_if_file_exists():
@@ -83,3 +84,12 @@ def test_load_raw_data_has_valid_dates_if_file_exists():
 
     assert pd.api.types.is_datetime64_any_dtype(data['FECHA'])
     assert data['FECHA'].notna().all()
+
+
+def test_spill_height_preserves_occurrence_without_flow_conversion():
+    from src.data_loader import spill_occurrence
+    assert spill_occurrence('3.5 CM') == 1
+    assert spill_occurrence('8 mm') == 1
+    assert spill_occurrence('18 cm.') == 1
+    assert spill_occurrence('0 cm') == 0
+    assert pd.isna(spill_occurrence('sin dato'))

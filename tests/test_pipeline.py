@@ -1,7 +1,8 @@
-﻿from src import pipeline
+from src import pipeline
 
 
 def patch_pipeline_dependencies(monkeypatch, calls: list[str]) -> None:
+    monkeypatch.setattr(pipeline, 'save_run_manifest', lambda config, steps: None)
     pipeline_config = {'config': 'pipeline'}
     experiments_config = {'config': 'experiments'}
 
@@ -62,10 +63,10 @@ def patch_pipeline_dependencies(monkeypatch, calls: list[str]) -> None:
         assert config == {'config': 'experiments'}
         calls.append('final_ranking')
 
-    def fake_run_statistical_tests(pipeline_config, experiments_config):
+    def fake_run_partition_comparison(pipeline_config, experiments_config):
         assert pipeline_config == {'config': 'pipeline'}
         assert experiments_config == {'config': 'experiments'}
-        calls.append('statistical_tests')
+        calls.append('partition_comparison')
 
     def fake_run_algorithm_analysis(config):
         assert config == {'config': 'experiments'}
@@ -96,8 +97,8 @@ def patch_pipeline_dependencies(monkeypatch, calls: list[str]) -> None:
     monkeypatch.setattr(pipeline, 'run_final_ranking', fake_run_final_ranking)
     monkeypatch.setattr(
         pipeline,
-        'run_statistical_tests',
-        fake_run_statistical_tests,
+        'run_partition_comparison',
+        fake_run_partition_comparison,
     )
     monkeypatch.setattr(
         pipeline,
@@ -139,7 +140,7 @@ def test_run_pipeline_calls_all_steps_when_stability_is_complete(monkeypatch):
         'stability',
         'max_runs=None',
         'final_ranking',
-        'statistical_tests',
+        'partition_comparison',
         'algorithm_analysis',
         'interpretation',
         'figures',

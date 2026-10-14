@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
@@ -129,6 +129,9 @@ def validate_feature_matrix(
 
     if features[feature_columns].isna().any().any():
         raise ValueError('Feature matrix contains missing values.')
+
+    if not np.isfinite(features[feature_columns].to_numpy(dtype=float)).all():
+        raise ValueError('Feature matrix contains non-finite values.')
 
     non_numeric = [
         column for column in feature_columns

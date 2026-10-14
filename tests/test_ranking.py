@@ -1,4 +1,4 @@
-﻿import pandas as pd
+import pandas as pd
 import pytest
 
 from src.ranking import (
@@ -26,7 +26,7 @@ def build_config(tmp_path=None) -> dict:
                 'calinski_harabasz': 0.20,
                 'estabilidad': 0.25,
                 'penalizacion_ruido': 0.05,
-                'penalizacion_cluster_pequeno': 0.05,
+                'penalizacion_desbalance': 0.05,
             }
         },
         'salidas': {

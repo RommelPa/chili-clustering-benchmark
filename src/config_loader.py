@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 from typing import Any
 
 import yaml
@@ -79,6 +79,9 @@ def load_experiments_config(
         ],
         config_name='experiments config',
     )
+    design = config['preprocesamiento_experimental']
+    if len(design['feature_sets']) != 1 or len(design['scalers']) != 1:
+        raise ValueError('Current benchmark requires exactly one feature set and scaler.')
     return config
 
 

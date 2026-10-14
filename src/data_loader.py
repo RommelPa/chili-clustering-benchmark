@@ -1,7 +1,9 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+
+import re
 
 import pandas as pd
 import pandera.pandas as pa
@@ -82,6 +84,22 @@ def _select_expected_columns(
     return data.loc[:, expected_columns].copy()
 
 
+def spill_occurrence(value: Any) -> float:
+    """Read occurrence without converting recorded spill height into discharge."""
+    if pd.isna(value):
+        return float('nan')
+    text = str(value).strip()
+    match = re.fullmatch(r'([+-]?\d+(?:[.,]\d+)?)\s*(?:cm|mm)\.?', text, re.I)
+    if match:
+        height = float(match.group(1).replace(',', '.'))
+        return float(height > 0) if height >= 0 else float('nan')
+    try:
+        number = float(text)
+        return float(number > 0) if number >= 0 else float('nan')
+    except ValueError:
+        return float('nan')
+
+
 def _clean_types(data: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Convert FECHA and numeric columns, returning a small cleaning log."""
     initial_rows = len(data)
@@ -148,6 +166,12 @@ def load_raw_data(config: dict[str, Any] | str | Path) -> pd.DataFrame:
     expected_columns = build_raw_expected_columns(config)
     data = _reconstruct_header(raw_excel, config)
     data = _select_expected_columns(data, expected_columns)
+    spill_events = pd.DataFrame({
+        f'REBOSE_EVENT{suffix}': data[f'REBOSE{suffix}'].map(spill_occurrence)
+        for suffix in config['embalses']['sufijos']
+    })
+    valid_dates = pd.to_datetime(data['FECHA'], errors='coerce').notna()
+    spill_events = spill_events.loc[valid_dates].reset_index(drop=True)
     data, cleaning_log = _clean_types(data)
 
     exceptions = config['variables'].get('excepciones', {})
@@ -158,7 +182,7 @@ def load_raw_data(config: dict[str, Any] | str | Path) -> pd.DataFrame:
 
     _write_cleaning_log(cleaning_log, config)
 
-    return validated
+    return pd.concat([validated, spill_events], axis=1)
 
 
 if __name__ == '__main__':

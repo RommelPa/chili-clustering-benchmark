@@ -1,4 +1,4 @@
-﻿import numpy as np
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -189,3 +189,14 @@ def test_get_project_random_state_prefers_random_state_key():
     }
 
     assert get_project_random_state(config) == 123
+
+
+def test_configured_spanish_seed_is_used():
+    assert get_project_random_state({'proyecto': {'semilla_aleatoria': 91}}) == 91
+
+
+def test_noise_does_not_count_as_preserved_between_cluster_separation():
+    import numpy as np
+    from src.stability import calculate_pairwise_stability
+    result = calculate_pairwise_stability(np.array([0, 0, 1, 1]), np.array([-1, -1, -1, -1]))
+    assert result['stability_score'] == 0

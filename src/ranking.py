@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
@@ -127,7 +127,7 @@ def add_penalty_columns(rankable: pd.DataFrame) -> pd.DataFrame:
         1.0,
     )
 
-    ranked['cluster_size_penalty_value'] = ranked['cluster_imbalance'].clip(
+    ranked['cluster_imbalance_penalty_value'] = ranked['cluster_imbalance'].clip(
         lower=0.0,
         upper=1.0,
     )
@@ -157,12 +157,12 @@ def calculate_ranking_score(
         result['internal_score'] += result[metric_name] * normalized_weight
 
     noise_weight = float(weights.get('penalizacion_ruido', 0.0))
-    cluster_weight = float(weights.get('penalizacion_cluster_pequeno', 0.0))
+    cluster_weight = float(weights.get('penalizacion_desbalance', 0.0))
 
     result['ranking_score'] = (
         result['internal_score']
         - noise_weight * result['noise_penalty_value']
-        - cluster_weight * result['cluster_size_penalty_value']
+        - cluster_weight * result['cluster_imbalance_penalty_value']
     ).clip(lower=0.0, upper=1.0)
 
     result['ranking_stage'] = 'internal_pre_stability'

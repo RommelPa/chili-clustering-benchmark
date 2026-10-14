@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+from __future__ import annotations
+
+import warnings
 
 from pathlib import Path
 from typing import Any
@@ -95,7 +97,9 @@ def run_single_benchmark(
 ) -> tuple[dict[str, Any], pd.DataFrame | None]:
     """Execute one clustering configuration and return metrics and labels."""
     try:
-        labels = fit_predict_clustering(spec, matrix.values)
+        with warnings.catch_warnings(record=True) as recorded:
+            warnings.simplefilter('always')
+            labels = fit_predict_clustering(spec, matrix.values)
         row = build_metrics_row(
             run_id=spec.run_id,
             algorithm_name=spec.algorithm_name,
@@ -108,6 +112,7 @@ def run_single_benchmark(
             labels=labels,
             restrictions=restrictions,
         )
+        row['algorithm_warnings'] = ' | '.join(sorted({str(w.message) for w in recorded}))
         row['status'] = 'success'
         row['error_message'] = ''
 

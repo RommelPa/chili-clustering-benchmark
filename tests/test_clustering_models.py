@@ -1,4 +1,4 @@
-﻿import numpy as np
+import numpy as np
 import pytest
 
 from src.clustering_models import (
@@ -61,7 +61,7 @@ def test_build_run_specs_returns_expected_number_of_configurations():
 
     specs = build_run_specs(config)
 
-    assert len(specs) == 70
+    assert len(specs) == 66
     assert specs[0].algorithm_name == 'kmeans'
     assert specs[0].run_id == 'kmeans_001'
 
@@ -161,3 +161,11 @@ def test_is_valid_partition_rejects_small_cluster():
     labels = np.array([0, 0, 0, 1, -1])
 
     assert is_valid_partition(labels, restrictions) is False
+
+
+def test_spectral_effective_configs_are_distinct():
+    specs = build_run_specs(load_experiments_config())
+    spectral = [s for s in specs if s.algorithm_name == 'spectral']
+    assert len(spectral) == 12
+    assert len({tuple(sorted(s.params.items())) for s in spectral}) == 12
+    assert all('n_neighbors' not in s.params for s in spectral if s.params['affinity'] == 'rbf')

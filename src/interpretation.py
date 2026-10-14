@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
@@ -349,7 +349,8 @@ def run_interpretation(
     years_by_cluster = membership.groupby('cluster_id')['AH'].apply(
         lambda values: ', '.join(values.astype(str))
     )
-    print(years_by_cluster.to_string())
+    for cluster, years in years_by_cluster.items():
+        print(f'{cluster}: {years}')
 
     print('[interpretation] Perfiles promedio por clúster:')
     profile_columns = ['cluster_id', 'n_years']

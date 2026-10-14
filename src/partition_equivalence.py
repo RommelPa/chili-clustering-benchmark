@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
@@ -64,6 +64,14 @@ def build_run_partition_map(
 ) -> pd.DataFrame:
     """Assign each ranked run to a canonical partition signature."""
     ranked_labels = get_ranked_run_labels(ranking, labels)
+
+    if set(ranking['run_id']) != set(ranked_labels['run_id']):
+        raise ValueError('Missing labels for ranked runs.')
+    if ranked_labels.duplicated(['run_id', 'AH_YEAR']).any():
+        raise ValueError('Duplicate labels for a hydrological year.')
+    year_sets = ranked_labels.groupby('run_id')['AH_YEAR'].apply(lambda x: tuple(sorted(x)))
+    if year_sets.nunique() != 1:
+        raise ValueError('Partitions do not cover the same hydrological years.')
 
     rows: list[dict[str, Any]] = []
 

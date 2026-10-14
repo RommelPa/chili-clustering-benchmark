@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -10,6 +10,7 @@ __pycache__/
 
 # Data
 data/raw/*.xlsx
+data/raw/*.xlsm
 data/raw/*.xls
 data/processed/*.csv
 
@@ -37,3 +38,8 @@ data/processed/*.log
 outputs/mlflow/
 *.db
 *.sqlite
+
+outputs/reports/*.json
+
+# Temporary result reference for the audit
+outputs/audit_baseline/

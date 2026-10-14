@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass
 from itertools import product
@@ -60,6 +60,14 @@ def build_run_specs(
             continue
 
         parameter_grid = expand_parameter_grid(algorithm_spec['grid'])
+
+        if algorithm_name == 'spectral':
+            unique = {}
+            for params in parameter_grid:
+                if params.get('affinity') == 'rbf':
+                    params = {k: v for k, v in params.items() if k != 'n_neighbors'}
+                unique[tuple(sorted(params.items()))] = params
+            parameter_grid = list(unique.values())
 
         for index, params in enumerate(parameter_grid, start=1):
             specs.append(

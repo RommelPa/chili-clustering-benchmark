@@ -1,4 +1,4 @@
-﻿import pandas as pd
+import pandas as pd
 
 from src.partition_equivalence import (
     build_partition_signature,

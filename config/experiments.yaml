@@ -159,13 +159,7 @@ metricas:
   - calinski_harabasz
   estabilidad:
     activo: true
-    metodo: subsampling_sin_reemplazo
-    n_iteraciones: 500
-    fraccion_muestra: 0.85
-    metricas:
-    - coasoc_intra_promedio
-    - coasoc_inter_promedio
-    - diferencia_intra_inter
+    configuracion: estabilidad
 estabilidad:
   metodo: subsampling_sin_reemplazo
   n_iteraciones: 500
@@ -185,25 +179,14 @@ ranking:
     silhouette: 0.25
     davies_bouldin: 0.2
     calinski_harabasz: 0.2
-    estabilidad_intra_inter: 0.25
     penalizacion_ruido: 0.05
-    penalizacion_cluster_pequeno: 0.05
+    penalizacion_desbalance: 0.05
     estabilidad: 0.25
-pruebas_estadisticas:
-  descripcion: 'Comparación estadística entre la partición mejor rankeada y las
-    demás particiones únicas retenidas, usando bootstrap pareado sobre métricas
-    internas y Mann-Whitney U sobre la estabilidad por submuestreo.
-
-    '
-  n_bootstrap: 10000
-  nivel_significancia: 0.05
 salidas:
   tablas:
     benchmark_runs: outputs/tables/benchmark_runs.csv
-    ranking_configuraciones: outputs/tables/ranking_configuraciones.csv
-    ranking_algoritmos: outputs/tables/ranking_algoritmos.csv
-    mejor_configuracion: outputs/tables/mejor_configuracion.csv
   figuras:
-    comparacion_metricas: outputs/figures/comparacion_metricas_algoritmos.png
-    ranking_configuraciones: outputs/figures/ranking_configuraciones.png
-    estabilidad_mejor_modelo: outputs/figures/estabilidad_mejor_modelo.png
+    directorio: outputs/figures
+comparacion_particiones:
+  metodo: descriptivo_sin_inferencia
+  submuestras_comunes: true

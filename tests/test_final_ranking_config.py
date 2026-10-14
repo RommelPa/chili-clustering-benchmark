@@ -1,4 +1,4 @@
-﻿from src.config_loader import load_experiments_config
+from src.config_loader import load_experiments_config
 
 
 def test_ranking_weights_include_stability_weight():
