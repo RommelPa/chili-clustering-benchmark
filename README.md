@@ -64,6 +64,7 @@ partition_equivalence
 stability
 final_ranking
 partition_comparison
+bootstrap_comparison
 algorithm_analysis
 interpretation
 figures
@@ -83,6 +84,9 @@ Este modo solo valida el flujo hasta estabilidad. No genera ranking final porque
 outputs/tables/final_partition_ranking.csv
 outputs/tables/partition_comparison.csv
 outputs/tables/partition_ari_matrix.csv
+outputs/tables/bootstrap_comparison.csv
+outputs/tables/bootstrap_iterations.csv
+outputs/tables/bootstrap_samples.csv
 outputs/tables/algorithm_performance_summary.csv
 outputs/tables/selected_partition_membership.csv
 outputs/tables/selected_cluster_profiles.csv
@@ -140,3 +144,13 @@ La verificación del 14/10/2026 en Windows con Python 3.11.9 aprobó 141 pruebas
 `outputs/reports/run_manifest.json` registra SHA-256 de la fuente, código y configuración, versiones de Python y paquetes y commit base. Si se ejecuta con cambios locales, el commit por sí solo no identifica el código: deben conservarse también los hashes. Las tablas intermedias son dependencias del pipeline, no todas son tablas para el artículo.
 
 Las pruebas se conservan en Git. Datos, resultados y MLflow permanecen locales. Para una entrega del estudio, conserve la fuente exacta con acceso autorizado, configuración, lockfile, versión del código, manifiesto y resultados seleccionados. Los resultados son descriptivos y retrospectivos.
+
+### Comparación exploratoria por bootstrap
+
+Después del ranking y la comparación descriptiva se ejecuta
+`uv run --locked python -m src.bootstrap_comparison`. Se generan 10.000
+muestras de años con reemplazo, comunes a los agrupamientos, manteniendo
+etiquetas y z-score originales. Se exportan diferencias orientadas a favor
+de la referencia, intervalos percentiles puntuales al 95%, réplicas detalladas
+y frecuencias de años de cada muestra. No se generan valores p ni veredictos
+de superioridad o equivalencia. Consulte las limitaciones en docs/REPRODUCIR.md.

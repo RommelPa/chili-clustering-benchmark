@@ -68,6 +68,11 @@ def patch_pipeline_dependencies(monkeypatch, calls: list[str]) -> None:
         assert experiments_config == {'config': 'experiments'}
         calls.append('partition_comparison')
 
+    monkeypatch.setattr(
+        pipeline, 'run_bootstrap_comparison',
+        lambda pipeline_config, experiments_config: calls.append('bootstrap_comparison'),
+    )
+
     def fake_run_algorithm_analysis(config):
         assert config == {'config': 'experiments'}
         calls.append('algorithm_analysis')
@@ -141,6 +146,7 @@ def test_run_pipeline_calls_all_steps_when_stability_is_complete(monkeypatch):
         'max_runs=None',
         'final_ranking',
         'partition_comparison',
+        'bootstrap_comparison',
         'algorithm_analysis',
         'interpretation',
         'figures',

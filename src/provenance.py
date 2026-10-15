@@ -28,7 +28,7 @@ def save_run_manifest(config: dict[str, Any], completed_steps: list[str]) -> Pat
         'python': platform.python_version(), 'package_versions': versions,
         'code_and_config_sha256': {str(p): file_sha256(p) for p in tracked_code},
         'completed_steps': completed_steps,
-        'comparison_scope': 'descriptive, conditional on observed years; no population significance tests',
+        'comparison_scope': 'descriptive robustness and exploratory fixed-label bootstrap; no selection-adjusted population significance tests',
     }
     destination = Path(config['rutas']['carpeta_reportes']) / 'run_manifest.json'
     destination.parent.mkdir(parents=True, exist_ok=True)

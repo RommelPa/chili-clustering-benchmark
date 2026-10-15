@@ -5,6 +5,7 @@ import argparse
 
 from src.algorithm_analysis import run_algorithm_analysis
 from src.benchmark import run_benchmark
+from src.bootstrap_comparison import run_bootstrap_comparison
 from src.config_loader import load_experiments_config, load_pipeline_config
 from src.data_summary import run_data_summary
 from src.figures import generate_figures
@@ -26,6 +27,7 @@ PIPELINE_STEPS = [
     'stability',
     'final_ranking',
     'partition_comparison',
+    'bootstrap_comparison',
     'algorithm_analysis',
     'interpretation',
     'figures',
@@ -115,6 +117,11 @@ def run_pipeline(
     )
     completed_steps.append('partition_comparison')
     print_step_done('partition_comparison')
+
+    print_step_start('bootstrap_comparison')
+    run_bootstrap_comparison(pipeline_config, experiments_config)
+    completed_steps.append('bootstrap_comparison')
+    print_step_done('bootstrap_comparison')
 
     print_step_start('algorithm_analysis')
     run_algorithm_analysis(experiments_config)

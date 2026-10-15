@@ -190,3 +190,8 @@ salidas:
 comparacion_particiones:
   metodo: descriptivo_sin_inferencia
   submuestras_comunes: true
+
+comparacion_bootstrap:
+  n_replicas: 10000
+  nivel_intervalo: 0.95
+  alcance: exploratorio_etiquetas_fijas

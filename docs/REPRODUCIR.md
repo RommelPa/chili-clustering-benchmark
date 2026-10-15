@@ -33,7 +33,7 @@ $env:MKL_NUM_THREADS="1"
 uv run --locked python -m src.pipeline
 ```
 
-El pipeline genera sus dependencias en orden y lee el Excel una sola vez. La ejecución completa produce once etapas y un manifiesto. Para la fuente y configuración verificadas: 5.114 días, 14 años, cinco variables, 66 configuraciones, 38 retenidas y 14 particiones únicas. Cambiar fuente o diseño puede cambiar los resultados.
+El pipeline genera sus dependencias en orden y lee el Excel una sola vez. La ejecución completa produce doce etapas y un manifiesto. Para la fuente y configuración verificadas: 5.114 días, 14 años, cinco variables, 66 configuraciones, 38 retenidas y 14 particiones únicas. Cambiar fuente o diseño puede cambiar los resultados.
 
 ## Prueba corta y etapas independientes
 
@@ -70,9 +70,39 @@ Para repetir la evaluación desde las tablas del benchmark auditado:
 uv run --locked python -m src.stability
 uv run --locked python -m src.final_ranking
 uv run --locked python -m src.partition_comparison
+uv run --locked python -m src.bootstrap_comparison
 uv run --locked python -m src.algorithm_analysis
 uv run --locked python -m src.interpretation
 uv run --locked python -m src.figures
 ```
 
 Una ejecución completa posterior es necesaria para actualizar el manifiesto.
+
+## Bootstrap exploratorio de agrupamientos fijos
+
+Ejecute `uv run --locked python -m src.bootstrap_comparison` después del
+ranking final; la ejecución completa también incluye esta etapa. El diseño
+genera 10.000 muestras de 14 años con reemplazo, con semilla del proyecto,
+comunes a los 13 pares. No reajusta algoritmos, escala ni selección del ranking.
+En cada muestra se recalculan las tres métricas con las etiquetas originales.
+Los años repetidos se conservan; no representan años nuevos y pueden sesgar
+los índices geométricos al introducir distancias nulas.
+
+Se excluye una réplica de un par si alguna métrica no es finita en cualquiera
+de sus agrupamientos. Se informan cantidad y fracción válidas, sin reponer
+réplicas descartadas. Los intervalos percentiles se condicionan a esas réplicas
+válidas; si no hay ninguna, los resultados son NaN. No se aplica el filtro de
+tamaño mínimo de grupo del benchmark a las réplicas. Se rechazan agrupamientos
+con ruido para evitar comparar métricas sobre años diferentes.
+
+El bootstrap ordinario supone años intercambiables y no preserva dependencia
+temporal; no se ha establecido esa suposición para esta serie. Los intervalos
+son exploratorios, puntuales (sin cobertura simultánea para los 39 contrastes)
+y no corrigen la selección previa. Excluir cero no demuestra superioridad
+confirmatoria y contenerlo no demuestra equivalencia. No se presentan valores p,
+Wilcoxon, Mann–Whitney ni ajuste Benjamini–Hochberg.
+
+Salidas: bootstrap_comparison.csv (39 filas), bootstrap_iterations.csv
+(130.000 filas) y bootstrap_samples.csv (10.000 filas con conteos por año).
+Todas se guardan en outputs/tables y están excluidas de Git. Esta etapa
+no modifica el ranking. Una ejecución completa actualiza el manifiesto.
