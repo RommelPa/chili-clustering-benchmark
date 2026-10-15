@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import warnings
+from itertools import combinations
+from math import comb
 
 from pathlib import Path
 from typing import Any
@@ -21,6 +23,31 @@ def get_sample_size(n_items: int, sample_fraction: float) -> int:
     sample_size = int(round(n_items * sample_fraction))
 
     return max(2, min(n_items, sample_size))
+
+
+def build_subsamples(
+    n_items: int,
+    sample_size: int,
+    method: str,
+    n_iterations: int,
+    random_state: int,
+    max_combinations: int = 10000,
+) -> list[np.ndarray]:
+    """Enumerate equally weighted subsets or draw seeded random perturbations."""
+    if not 2 <= sample_size <= n_items:
+        raise ValueError('Sample size must be between 2 and n_items.')
+    if method == 'exhaustivo_sin_reemplazo':
+        if comb(n_items, sample_size) > max_combinations:
+            raise ValueError('Exhaustive design exceeds max_combinaciones.')
+        return [np.array(indices, dtype=int)
+                for indices in combinations(range(n_items), sample_size)]
+    if method != 'subsampling_sin_reemplazo':
+        raise ValueError(f'Unknown stability method: {method}')
+    if n_iterations < 1:
+        raise ValueError('n_iterations must be positive for random subsampling.')
+    rng = np.random.default_rng(random_state)
+    return [np.sort(rng.choice(n_items, size=sample_size, replace=False))
+            for _ in range(n_iterations)]
 
 
 def calculate_pairwise_stability(
@@ -159,9 +186,10 @@ def compute_run_stability(
     n_iterations: int,
     sample_fraction: float,
     random_state: int,
+    method: str = 'subsampling_sin_reemplazo',
+    max_combinations: int = 10000,
 ) -> tuple[dict[str, Any], pd.DataFrame]:
     """Estimate clustering stability for one benchmark run."""
-    rng = np.random.default_rng(random_state)
     n_items = len(reference_labels)
     sample_size = get_sample_size(n_items, sample_fraction)
 
@@ -169,14 +197,10 @@ def compute_run_stability(
     label_cache: dict[tuple[int, ...], np.ndarray] = {}
     warning_cache: dict[tuple[int, ...], str] = {}
 
-    for iteration in range(1, n_iterations + 1):
-        sample_indices = np.sort(
-            rng.choice(
-                n_items,
-                size=sample_size,
-                replace=False,
-            )
-        )
+    subsamples = build_subsamples(
+        n_items, sample_size, method, n_iterations, random_state, max_combinations,
+    )
+    for iteration, sample_indices in enumerate(subsamples, start=1):
 
         try:
             sampled_values = matrix.values[sample_indices]
@@ -233,6 +257,9 @@ def compute_run_stability(
 
     summary = summarize_stability_iterations(iteration_rows)
 
+    summary['sampling_method'] = method
+    summary['n_unique_subsamples'] = len({tuple(v) for v in subsamples})
+    summary['n_possible_subsamples'] = comb(n_items, sample_size)
     return summary, pd.DataFrame(iteration_rows)
 
 
@@ -328,7 +355,9 @@ def run_stability_analysis(
     matrix_map = build_matrix_map(matrices)
 
     stability_config = experiments_config['estabilidad']
-    n_iterations = int(stability_config['n_iteraciones'])
+    method = str(stability_config['metodo'])
+    n_iterations = int(stability_config.get('n_iteraciones', 500))
+    max_combinations = int(stability_config.get('max_combinaciones', 10000))
     sample_fraction = float(stability_config['fraccion_muestra'])
     random_state = get_project_random_state(pipeline_config)
 
@@ -348,6 +377,8 @@ def run_stability_analysis(
             n_iterations=n_iterations,
             sample_fraction=sample_fraction,
             random_state=random_state,
+            method=method,
+            max_combinations=max_combinations,
         )
 
         stability_rows.append(
@@ -377,7 +408,8 @@ def run_stability_analysis(
 
     print('[stability] Estabilidad por submuestreo calculada')
     print(f'[stability] Corridas evaluadas: {len(stability)}')
-    print(f'[stability] Iteraciones por corrida: {n_iterations}')
+    print(f'[stability] Método: {method}')
+    print(f"[stability] Submuestras por corrida: {int(stability['n_iterations'].iloc[0])}")
     print(f'[stability] Fracción de muestra: {sample_fraction}')
     print(f'[stability] Tabla resumen: {stability_path}')
     print(f'[stability] Tabla iteraciones: {iterations_path}')

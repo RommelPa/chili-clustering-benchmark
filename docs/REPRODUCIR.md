@@ -52,3 +52,27 @@ Compruebe outputs/reports/run_manifest.json. Las versiones que se reportan en el
 Para revisión: membresía seleccionada, perfiles originales, ranking de particiones, resumen de estabilidad y comparación descriptiva. La selección de figuras para el artículo requiere revisión visual. Las tablas intermedias y las iteraciones detalladas permiten rastrear los resultados; no necesitan publicarse todas como tablas del manuscrito.
 
 MLflow guarda experimentos localmente según config/experiments.yaml. Su historial no se elimina con clean_outputs.py. Datos, resultados y el respaldo temporal de auditoría están excluidos de Git.
+
+## Estabilidad exhaustiva
+
+El diseño enumera las 91 combinaciones de 12 de los 14 años, con igual peso.
+Se mantienen la escala de entrada y los hiperparámetros originales. No es una
+prueba de significancia ni los cuantiles de las diferencias son intervalos de
+confianza poblacionales. Las combinaciones fallidas se registran y reducen la
+estabilidad mediante la fracción válida. La comparación pareada solo incluye
+combinaciones válidas para ambos representantes, por lo que debe informarse
+su cobertura. El ranking final puede cambiar al sustituir 500 sorteos por la
+enumeración exhaustiva; deben regenerarse todas las etapas posteriores.
+
+Para repetir la evaluación desde las tablas del benchmark auditado:
+
+```powershell
+uv run --locked python -m src.stability
+uv run --locked python -m src.final_ranking
+uv run --locked python -m src.partition_comparison
+uv run --locked python -m src.algorithm_analysis
+uv run --locked python -m src.interpretation
+uv run --locked python -m src.figures
+```
+
+Una ejecución completa posterior es necesaria para actualizar el manifiesto.

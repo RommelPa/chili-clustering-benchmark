@@ -161,8 +161,8 @@ metricas:
     activo: true
     configuracion: estabilidad
 estabilidad:
-  metodo: subsampling_sin_reemplazo
-  n_iteraciones: 500
+  metodo: exhaustivo_sin_reemplazo
+  max_combinaciones: 10000
   fraccion_muestra: 0.85
 restricciones_particion:
   min_clusters_validos: 2

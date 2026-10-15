@@ -200,3 +200,56 @@ def test_noise_does_not_count_as_preserved_between_cluster_separation():
     from src.stability import calculate_pairwise_stability
     result = calculate_pairwise_stability(np.array([0, 0, 1, 1]), np.array([-1, -1, -1, -1]))
     assert result['stability_score'] == 0
+
+
+def test_exhaustive_subsamples_cover_all_91_pairs_of_excluded_years():
+    from itertools import combinations
+    from src.stability import build_subsamples
+
+    samples = build_subsamples(14, 12, 'exhaustivo_sin_reemplazo', 0, 42)
+    signatures = {tuple(sample) for sample in samples}
+    excluded = {tuple(sorted(set(range(14)) - set(sample))) for sample in samples}
+    assert len(samples) == len(signatures) == 91
+    assert excluded == set(combinations(range(14), 2))
+    other_seed = build_subsamples(14, 12, 'exhaustivo_sin_reemplazo', 999, 91)
+    assert [tuple(v) for v in samples] == [tuple(v) for v in other_seed]
+
+
+def test_exhaustive_subsamples_guard_against_accidental_large_enumeration():
+    from src.stability import build_subsamples
+
+    with pytest.raises(ValueError, match='max_combinaciones'):
+        build_subsamples(30, 15, 'exhaustivo_sin_reemplazo', 0, 42)
+    with pytest.raises(ValueError, match='Unknown stability method'):
+        build_subsamples(14, 12, 'typo', 500, 42)
+
+
+def test_exhaustive_stability_uses_common_subsamples_and_counts_failed_fits(monkeypatch):
+    from src import stability
+
+    matrix = build_matrix()
+    reference = np.array([0, 0, 1, 1, 2, 2])
+    specs = [ClusteringRunSpec(
+        run_id=f'run_{i}', algorithm_name='agglomerative', family='test',
+        role='test', params={'n_clusters': 3},
+    ) for i in range(2)]
+
+    def fit(spec, values):
+        # One of six leave-one-out subsets omits the first row.
+        if not np.any(values[:, 0] == 0.0):
+            raise ValueError('Deliberate fit failure')
+        return np.rint(values[:, 0] / 5).astype(int)
+
+    monkeypatch.setattr(stability, 'fit_predict_clustering', fit)
+    outputs = [compute_run_stability(
+        spec, matrix, reference, 500, 0.85, seed,
+        method='exhaustivo_sin_reemplazo',
+    ) for spec, seed in zip(specs, [42, 99])]
+    left_summary, left = outputs[0]
+    _, right = outputs[1]
+    assert left_summary['n_iterations'] == 6
+    assert left_summary['n_unique_subsamples'] == 6
+    assert left_summary['n_possible_subsamples'] == 6
+    assert left_summary['n_failed_iterations'] == 1
+    assert left_summary['stability_score'] == pytest.approx(5 / 6)
+    assert left['sample_signature'].tolist() == right['sample_signature'].tolist()

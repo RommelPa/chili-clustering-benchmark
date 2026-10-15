@@ -120,7 +120,7 @@ La longitud de 14 años delimita el registro disponible; no demuestra suficienci
 ## Evaluación y alcance
 
 - La grilla declara 70 combinaciones, pero cuatro duplicados RBF de Spectral se eliminan porque n_neighbors no interviene con affinity=rbf. Se ejecutan 66 configuraciones efectivas: K-means 8, jerárquico 12, mezclas gaussianas 12, Spectral 12, BIRCH 12 y DBSCAN 10.
-- Estabilidad: 500 submuestras sin reemplazo del 85% de los años, usando la misma secuencia y semilla para todas las configuraciones. Con 14 años se seleccionan 12 en cada iteración. El z-score permanece fijado al registro original: se evalúa sensibilidad de los algoritmos a exclusión de años, condicionada a esa escala.
+- Estabilidad: enumeración exhaustiva sin reemplazo del 85% de los años. Con 14 años se seleccionan 12 y se evalúan las 91 combinaciones, una vez cada una y en el mismo orden para todas las configuraciones. Las semillas de los algoritmos permanecen fijas; no se evalúa variabilidad entre inicializaciones. El z-score permanece fijado al registro original: se evalúa sensibilidad de los algoritmos a exclusión de años, condicionada a esa escala.
 - El score integra tres métricas internas y estabilidad. La penalización denominada penalizacion_desbalance mide desbalance (1 - tamaño mínimo/tamaño máximo), no una penalización adicional independiente de tamaño absoluto.
 - El soporte entre configuraciones se informa y se usa para desempatar; no forma parte de la suma ponderada ni constituye validación independiente.
 - Particiones equivalentes significa idéntica pertenencia de años salvo numeración de etiquetas. ARI mide acuerdo, no equivalencia estadística.
